@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MagicalTux/strftime"
+	"github.com/KarpelesLab/strftime"
 	"golang.org/x/text/language"
 )
 
