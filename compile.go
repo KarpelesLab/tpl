@@ -81,7 +81,7 @@ func (e *Page) Compile(ctx context.Context) error {
 	e.compiled = make(map[string]internalArray)
 
 	if !e.Raw.IsValid() {
-		return errors.New("template is not valid (is main template missing?")
+		return errors.New("template is not valid (is main template missing?)")
 	}
 
 	// for each raw template, compile
