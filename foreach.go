@@ -55,6 +55,15 @@ func foreachAny(ctx context.Context, val interface{}, elementF func(k, v interfa
 			}
 		}
 		return idx, nil
+	case map[string]json.RawMessage:
+		max := int64(len(valT))
+		for kT, vT := range valT {
+			idx += 1
+			if err := elementF(kT, vT, idx, max); err != nil {
+				return idx, err
+			}
+		}
+		return idx, nil
 	case json.RawMessage:
 		var d interface{}
 		if err := json.Unmarshal(valT, &d); err != nil {

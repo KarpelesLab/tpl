@@ -484,6 +484,8 @@ func fltLength(ctx context.Context, params Values, in Value, out WritableValue) 
 		return out.WriteValue(ctx, len(i))
 	case map[string]Value:
 		return out.WriteValue(ctx, len(i))
+	case map[string]json.RawMessage:
+		return out.WriteValue(ctx, len(i))
 	default:
 		return out.WriteValue(ctx, len(in.WithCtx(ctx).String()))
 	}

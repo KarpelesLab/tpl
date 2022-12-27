@@ -17,6 +17,8 @@ func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{
 		return o[s], nil
 	case map[string]Value:
 		return o[s], nil
+	case map[string]json.RawMessage:
+		return o[s], nil
 	case url.Values:
 		return o[s], nil
 	case Values:
