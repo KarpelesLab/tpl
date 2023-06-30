@@ -59,6 +59,14 @@ func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{
 			return nil, fmt.Errorf("failed to parse json: %s", err)
 		}
 		return ResolveValueIndex(ctx, sub, s)
+	case interface{ RawJSONBytes() []byte }:
+		// parse at json object
+		var sub any
+		err := json.Unmarshal(o.RawJSONBytes(), &sub)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse json: %s", err)
+		}
+		return ResolveValueIndex(ctx, sub, s)
 	case Value:
 		val, err := o.ReadValue(ctx)
 		if err != nil {

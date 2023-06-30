@@ -142,6 +142,13 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 			return time.Time{}, err
 		}
 		return parseDate(ctx, x)
+	case interface{ RawJSONBytes() []byte }:
+		var x interface{}
+		err := json.Unmarshal(r.RawJSONBytes(), &x)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return parseDate(ctx, x)
 	case map[string]interface{}:
 		if us, ok := r["full"].(string); ok {
 			// microtime!

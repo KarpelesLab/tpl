@@ -162,6 +162,15 @@ func (v *ValueCtx) StringErr() (string, error) {
 		}
 		// run through String() again
 		return NewValue(x).WithCtx(v.ctx).StringErr()
+	case interface{ RawJSONBytes() []byte }:
+		// convert to any, re-run through the process
+		var x any
+		err := json.Unmarshal(rv.RawJSONBytes(), &x)
+		if err != nil {
+			return "", err
+		}
+		// run through String() again
+		return NewValue(x).WithCtx(v.ctx).StringErr()
 	case nil:
 		return "", nil
 	default:
@@ -230,7 +239,16 @@ func (v *ValueCtx) BytesErr() ([]byte, error) {
 			return nil, err
 		}
 		// run through String() again
-		return NewValue(x).WithCtx(v.ctx).Bytes(), nil
+		return NewValue(x).WithCtx(v.ctx).BytesErr()
+	case interface{ RawJSONBytes() []byte }:
+		// convert to any, re-run through the process
+		var x any
+		err := json.Unmarshal(rv.RawJSONBytes(), &x)
+		if err != nil {
+			return nil, err
+		}
+		// run through String() again
+		return NewValue(x).WithCtx(v.ctx).BytesErr()
 	case nil:
 		return nil, nil
 	default:

@@ -30,6 +30,8 @@ func debugDump(o io.Writer, i interface{}, lvl int) {
 		fmt.Fprintf(o, "]")
 	case json.RawMessage:
 		fmt.Fprintf(o, "%sjson.RawMessage[%s]", pfx, v)
+	case interface{ RawJSONBytes() []byte }:
+		fmt.Fprintf(o, "%sjson.RawMessage[%s]", pfx, v.RawJSONBytes())
 	case *bytes.Buffer:
 		fmt.Fprintf(o, "%s%T(%s)", pfx, v, v.Bytes())
 	default:

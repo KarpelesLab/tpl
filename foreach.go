@@ -70,6 +70,12 @@ func foreachAny(ctx context.Context, val interface{}, elementF func(k, v interfa
 			return 0, err
 		}
 		return foreachAny(ctx, d, elementF)
+	case interface{ RawJSONBytes() []byte }:
+		var d any
+		if err := json.Unmarshal(valT.RawJSONBytes(), &d); err != nil {
+			return 0, err
+		}
+		return foreachAny(ctx, d, elementF)
 	case Value:
 		v, err := valT.ReadValue(ctx)
 		if err != nil {
