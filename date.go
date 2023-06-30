@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KarpelesLab/pjson"
 	"github.com/KarpelesLab/strftime"
 	"golang.org/x/text/language"
 )
@@ -136,6 +137,13 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 		}
 		return time.Time{}, fmt.Errorf("failed to parse time: %s", r)
 	case json.RawMessage:
+		var x interface{}
+		err := json.Unmarshal(r, &x)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return parseDate(ctx, x)
+	case pjson.RawMessage:
 		var x interface{}
 		err := json.Unmarshal(r, &x)
 		if err != nil {

@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+
+	"github.com/KarpelesLab/pjson"
 )
 
 func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{}, error) {
@@ -18,6 +20,8 @@ func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{
 	case map[string]Value:
 		return o[s], nil
 	case map[string]json.RawMessage:
+		return o[s], nil
+	case map[string]pjson.RawMessage:
 		return o[s], nil
 	case url.Values:
 		return o[s], nil
@@ -52,6 +56,14 @@ func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{
 		}
 		return o[n], nil
 	case json.RawMessage:
+		// parse at json object
+		var sub interface{}
+		err := json.Unmarshal(o, &sub)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse json: %s", err)
+		}
+		return ResolveValueIndex(ctx, sub, s)
+	case pjson.RawMessage:
 		// parse at json object
 		var sub interface{}
 		err := json.Unmarshal(o, &sub)

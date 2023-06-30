@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/KarpelesLab/pjson"
 	"golang.org/x/text/language"
 )
 
@@ -162,6 +163,15 @@ func (v *ValueCtx) StringErr() (string, error) {
 		}
 		// run through String() again
 		return NewValue(x).WithCtx(v.ctx).StringErr()
+	case pjson.RawMessage:
+		// convert to interface{}, re-run through the process
+		var x interface{}
+		err := json.Unmarshal(rv, &x)
+		if err != nil {
+			return "", err
+		}
+		// run through String() again
+		return NewValue(x).WithCtx(v.ctx).StringErr()
 	case interface{ RawJSONBytes() []byte }:
 		// convert to any, re-run through the process
 		var x any
@@ -232,6 +242,15 @@ func (v *ValueCtx) BytesErr() ([]byte, error) {
 		}
 		return []byte{}, nil
 	case json.RawMessage:
+		// convert to interface{}, re-run through the process
+		var x interface{}
+		err := json.Unmarshal(rv, &x)
+		if err != nil {
+			return nil, err
+		}
+		// run through String() again
+		return NewValue(x).WithCtx(v.ctx).BytesErr()
+	case pjson.RawMessage:
 		// convert to interface{}, re-run through the process
 		var x interface{}
 		err := json.Unmarshal(rv, &x)
