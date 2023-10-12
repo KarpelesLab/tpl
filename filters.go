@@ -14,7 +14,7 @@ import (
 
 	"github.com/frustra/bbcode"
 	"github.com/microcosm-cc/bluemonday"
-	blackfriday "gopkg.in/russross/blackfriday.v2"
+	"github.com/russross/blackfriday/v2"
 )
 
 type TplFiltCallback func(ctx context.Context, params Values, in Value, out WritableValue) error
