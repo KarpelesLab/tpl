@@ -181,7 +181,7 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 		return parseDate(ctx, string(r))
 	case *bytes.Buffer:
 		return parseDate(ctx, string(r.Bytes()))
-	case Value:
+	case ValueReader:
 		v, err := r.ReadValue(ctx)
 		if err != nil {
 			return time.Time{}, err

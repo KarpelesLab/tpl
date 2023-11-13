@@ -138,7 +138,7 @@ func fetchNumberInt(ctx context.Context, v interface{}) (int64, bool) {
 		return fetchNumberInt(ctx, string(n.Bytes()))
 	case nil:
 		return 0, true
-	case Value:
+	case ValueReader:
 		if nVal, err := n.ReadValue(ctx); err != nil {
 			return 0, false
 		} else {
@@ -198,7 +198,7 @@ func fetchNumberUint(ctx context.Context, v interface{}) (uint64, bool) {
 		return res, err == nil
 	case nil:
 		return 0, true
-	case Value:
+	case ValueReader:
 		if nVal, err := n.ReadValue(ctx); err != nil {
 			return 0, false
 		} else {
@@ -242,7 +242,7 @@ func fetchNumberFloat(ctx context.Context, v interface{}) (float64, bool) {
 		return res, err == nil
 	case nil:
 		return 0, true
-	case Value:
+	case ValueReader:
 		if nVal, err := n.ReadValue(ctx); err != nil {
 			return 0, false
 		} else {
@@ -308,7 +308,7 @@ func fetchNumberAny(ctx context.Context, v interface{}) (interface{}, bool) {
 		} else {
 			return fetchNumberAny(ctx, nVal)
 		}
-	case Value:
+	case ValueReader:
 		if nVal, err := n.ReadValue(ctx); err != nil {
 			return nil, false
 		} else {

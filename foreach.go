@@ -93,7 +93,7 @@ func foreachAny(ctx context.Context, val interface{}, elementF func(k, v interfa
 			return 0, err
 		}
 		return foreachAny(ctx, d, elementF)
-	case Value:
+	case ValueReader:
 		v, err := valT.ReadValue(ctx)
 		if err != nil {
 			return 0, err

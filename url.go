@@ -35,7 +35,7 @@ func QueryEscapeAny(ctx context.Context, val interface{}) string {
 		return url.QueryEscape(v.String())
 	case strings.Builder:
 		return url.QueryEscape(v.String())
-	case Value:
+	case ValueReader:
 		rv, err := v.ReadValue(ctx)
 		if err != nil {
 			LogWarn(ctx, "unable to read value in QueryEscapeAny: %s", err)

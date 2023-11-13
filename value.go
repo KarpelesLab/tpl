@@ -11,6 +11,10 @@ import (
 	"golang.org/x/text/language"
 )
 
+type ValueReader interface {
+	ReadValue(ctx context.Context) (interface{}, error)
+}
+
 type Value interface {
 	ReadValue(ctx context.Context) (interface{}, error)
 	WithCtx(ctx context.Context) *ValueCtx

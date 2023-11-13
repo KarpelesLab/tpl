@@ -79,7 +79,7 @@ func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{
 			return nil, fmt.Errorf("failed to parse json: %s", err)
 		}
 		return ResolveValueIndex(ctx, sub, s)
-	case Value:
+	case ValueReader:
 		val, err := o.ReadValue(ctx)
 		if err != nil {
 			return nil, err
