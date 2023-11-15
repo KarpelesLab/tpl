@@ -53,7 +53,7 @@ func (v *ValueCtx) Raw() (interface{}, error) {
 	res = v.Value
 
 	for {
-		o, ok := res.(Value)
+		o, ok := res.(ValueReader)
 		if !ok {
 			break
 		}
