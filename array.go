@@ -11,9 +11,11 @@ import (
 	"github.com/KarpelesLab/pjson"
 )
 
-func ResolveValueIndex(ctx context.Context, v interface{}, s string) (interface{}, error) {
+func ResolveValueIndex(ctx context.Context, v any, s string) (any, error) {
 	switch o := v.(type) {
 	case ArrayAccessGet:
+		return o.OffsetGet(ctx, s)
+	case ArrayAccessGetAny:
 		return o.OffsetGet(ctx, s)
 	case map[string]interface{}:
 		return o[s], nil

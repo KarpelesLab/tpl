@@ -38,6 +38,10 @@ type ArrayAccessGet interface {
 	OffsetGet(context.Context, string) (Value, error)
 }
 
+type ArrayAccessGetAny interface {
+	OffsetGet(context.Context, string) (any, error)
+}
+
 type bytableIf interface {
 	Bytes() []byte
 }
