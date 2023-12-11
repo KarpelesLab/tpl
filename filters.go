@@ -670,6 +670,11 @@ func fltArraySlice(ctx context.Context, params Values, in Value, out WritableVal
 		from = 0
 	}
 
+	if from < 0 || to < 0 {
+		// illegal
+		return fmt.Errorf("arraySlice(%d,%d) filter argument cannot be negative", from, to)
+	}
+
 	switch i := inObj.(type) {
 	case string:
 		r := []rune(i)
