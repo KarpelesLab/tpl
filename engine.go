@@ -59,7 +59,7 @@ func (n *internalNode) internalParseLink(ctx context.Context, out *interfaceValu
 		return n.subError(err, "invalid attempt to read empty variable, invalid keyword?")
 	}
 
-	var val interface{}
+	var val any
 
 	if key[0] == '_' || key[0] == '$' {
 		// check for context
@@ -71,7 +71,7 @@ func (n *internalNode) internalParseLink(ctx context.Context, out *interfaceValu
 			val = tpl.WithCtx(ctx) // keep context in value so when we resolve it we have vars
 		} else {
 			// calling a non-existant link is not an error
-			log.Printf("Key = %s", key)
+			log.Printf("Accessing non-existing key returns null, key = %s", key)
 			return nil
 		}
 	}

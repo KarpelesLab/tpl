@@ -17,7 +17,7 @@ func ResolveValueIndex(ctx context.Context, v any, s string) (any, error) {
 		return o.OffsetGet(ctx, s)
 	case ArrayAccessGetAny:
 		return o.OffsetGet(ctx, s)
-	case map[string]interface{}:
+	case map[string]any:
 		return o[s], nil
 	case map[string]Value:
 		return o[s], nil
@@ -37,7 +37,7 @@ func ResolveValueIndex(ctx context.Context, v any, s string) (any, error) {
 			return nil, nil
 		}
 		return o[n], nil
-	case []interface{}:
+	case []any:
 		n, err := strconv.ParseInt(s, 0, 64)
 		if err != nil {
 			log.Printf("[tpl] failed to access array element #%s", s)
