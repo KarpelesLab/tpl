@@ -123,7 +123,7 @@ func fncPhpversion(ctx context.Context, params Values, out WritableValue) error 
 	return nil
 }
 
-func fncUnameHelperToString(v [65]int8) string {
+func fncUnameHelperToString[T int8 | uint8](v [65]T) string {
 	out := make([]byte, len(v))
 	for i := 0; i < len(v); i++ {
 		if v[i] == 0 {
