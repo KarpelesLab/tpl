@@ -127,7 +127,7 @@ func fncUnameHelperToString[T int8 | uint8](v [65]T) string {
 	out := make([]byte, len(v))
 	for i := 0; i < len(v); i++ {
 		if v[i] == 0 {
-			return string(out[:i-1])
+			return string(out[:i])
 		}
 		out[i] = byte(v[i])
 	}
