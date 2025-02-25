@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/KarpelesLab/pjson"
 )
 
 func foreachAny(ctx context.Context, val interface{}, elementF func(k, v interface{}, idx, max int64) error) (int64, error) {
@@ -67,21 +65,6 @@ func foreachAny(ctx context.Context, val interface{}, elementF func(k, v interfa
 		}
 		return idx, nil
 	case json.RawMessage:
-		var d interface{}
-		if err := json.Unmarshal(valT, &d); err != nil {
-			return 0, err
-		}
-		return foreachAny(ctx, d, elementF)
-	case map[string]pjson.RawMessage:
-		max := int64(len(valT))
-		for kT, vT := range valT {
-			idx += 1
-			if err := elementF(kT, vT, idx, max); err != nil {
-				return idx, err
-			}
-		}
-		return idx, nil
-	case pjson.RawMessage:
 		var d interface{}
 		if err := json.Unmarshal(valT, &d); err != nil {
 			return 0, err

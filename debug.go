@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/KarpelesLab/pjson"
 )
 
 type debugDumpable interface {
@@ -32,8 +30,6 @@ func debugDump(o io.Writer, i interface{}, lvl int) {
 		fmt.Fprintf(o, "]")
 	case json.RawMessage:
 		fmt.Fprintf(o, "%sjson.RawMessage[%s]", pfx, v)
-	case pjson.RawMessage:
-		fmt.Fprintf(o, "%spjson.RawMessage[%s]", pfx, v)
 	case interface{ RawJSONBytes() []byte }:
 		fmt.Fprintf(o, "%sjson.RawMessage[%s]", pfx, v.RawJSONBytes())
 	case *bytes.Buffer:

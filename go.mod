@@ -5,14 +5,13 @@ go 1.21
 toolchain go1.22.2
 
 require (
-	github.com/KarpelesLab/pjson v0.1.9
 	github.com/KarpelesLab/strftime v1.0.0
 	github.com/KarpelesLab/vfs v0.1.0
 	github.com/KarpelesLab/webutil v0.2.2
 	github.com/frustra/bbcode v0.0.0-20201127003707-6ef347fbe1c8
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/russross/blackfriday/v2 v2.1.0
-	golang.org/x/text v0.18.0
+	golang.org/x/text v0.22.0
 )
 
 require (
@@ -25,5 +24,5 @@ require (
 	github.com/lestrrat-go/strftime v1.1.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/tebeka/strftime v0.1.5 // indirect
-	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
 )
