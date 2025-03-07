@@ -75,6 +75,8 @@ var tplTestVars = []struct {
 	{`Round: {{_TEST_FLOAT|round(1)}}`, `Round: 3.1`},
 	{`Round: {{_TEST_FLOAT|round(3)}}`, `Round: 3.142`},
 	{`Round: {{_TEST_FLOAT|round(0)}}`, `Round: 3`},
+	{`ToLower: {{@string("HeLLoWorLD")|lowercase()}}`, `ToLower: helloworld`},
+	{`ToUpper: {{@string("HeLLoWorLD")|uppercase()}}`, `ToUpper: HELLOWORLD`},
 	{`Array slice: {{_TEST_ARRAY|arrayslice(0,1)|json()}}`, `Array slice: ["hello"]`},
 	{`Array slice: {{_TPL_PAGE|arrayslice(5)}}`, `Array slice: index`},
 	{`Array Filter: {{_TEST_CMPLX|arrayfilter("a","foo")|json()}}`, `Array Filter: [{"a":"foo"}]`},
