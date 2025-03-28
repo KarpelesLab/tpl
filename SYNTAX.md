@@ -12,8 +12,14 @@ This document describes the syntax and capabilities of the TPL-GO template engin
 
 ### Template Inclusion
 - `{{NAME}}` without underscore prefix includes another template file (e.g., `{{HEADER}}` includes header.tpl)
-- Templates can be included with parameters: `{{HEADER foo="bar"}}`
-- Parameters become available as variables in the included template
+- Templates cannot be included with direct parameters
+- Variables for included templates must be set using the set block:
+  ```
+  {{set _X="abc"}}
+    {{HEADER}}
+  {{/set}}
+  ```
+- Variables set before inclusion become available in the included template
 
 ### Variables
 - Variables are accessed within delimiters: `{{_VARIABLE_NAME}}`
