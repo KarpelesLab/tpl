@@ -3,9 +3,11 @@ package tpl_test
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/KarpelesLab/tpl"
+	"golang.org/x/text/language"
 )
 
 var tplTestVars = []struct {
@@ -95,7 +97,7 @@ func TestTpl(t *testing.T) {
 	e.Raw.TemplateData["get"] = "Value:{{_VALUE}}"
 
 	ctx := context.Background()
-	ctx = tpl.ValuesCtx(ctx, map[string]interface{}{
+	ctx = tpl.ValuesCtx(ctx, map[string]any{
 		"_tpl_page":   "index.html",
 		"_test_float": 3.14159265359,
 		"_test_array": tpl.Values{tpl.NewValue("hello"), tpl.NewValue("world")},
@@ -116,5 +118,92 @@ func TestTpl(t *testing.T) {
 			e.Dump(os.Stdout, 0)
 			t.Errorf("Test %#v should equal %#v (got: %#v:%v)", x.in, x.out, res, err)
 		}
+	}
+}
+
+func TestPageMethods(t *testing.T) {
+	e := tpl.New()
+	
+	// Test HasTpl
+	if e.HasTpl("nonexistent") {
+		t.Errorf("HasTpl returned true for nonexistent template")
+	}
+	
+	// Add required main template for compilation to succeed
+	e.Raw.TemplateData["main"] = "Main template"
+	e.Raw.TemplateData["existing"] = "template content"
+	if err := e.Compile(context.Background()); err != nil {
+		t.Fatalf("Failed to compile template: %v", err)
+	}
+	
+	if !e.HasTpl("existing") {
+		t.Errorf("HasTpl returned false for existing template")
+	}
+	
+	// Test GetMime
+	// First, clear any existing charset
+	delete(e.Raw.PageProperties, "Charset")
+	
+	// Test GetMime with only Content-Type set
+	e.Raw.PageProperties["Content-Type"] = "application/json"
+	expectedMime := "application/json"
+	if mime := e.GetMime(); !strings.HasPrefix(mime, expectedMime) {
+		t.Errorf("GetMime() = %v, expected to start with %v", mime, expectedMime)
+	}
+	
+	// Test GetMime with Charset set
+	e.Raw.PageProperties["Charset"] = "utf-8"
+	expectedMimeWithCharset := "application/json; charset=utf-8"
+	if mime := e.GetMime(); mime != expectedMimeWithCharset {
+		t.Errorf("GetMime() = %v, want %v", mime, expectedMimeWithCharset)
+	}
+	
+	// Test GetProperty
+	if prop := e.GetProperty("Charset"); prop != "utf-8" {
+		t.Errorf("GetProperty(\"Charset\") = %v, want %v", prop, "utf-8")
+	}
+	
+	if prop := e.GetProperty("NonExistent"); prop != "" {
+		t.Errorf("GetProperty(\"NonExistent\") = %v, want %v", prop, "")
+	}
+}
+
+func TestValueCtxMethods(t *testing.T) {
+	ctx := context.Background()
+	
+	// Test ToBool
+	v := tpl.NewValue(true).WithCtx(ctx)
+	if !v.ToBool() {
+		t.Errorf("ValueCtx.ToBool() for true value = %v, want %v", v.ToBool(), true)
+	}
+	
+	// Test IsString
+	strVal := tpl.NewValue("test string").WithCtx(ctx)
+	if !strVal.IsString() {
+		t.Errorf("ValueCtx.IsString() for string value = %v, want %v", strVal.IsString(), true)
+	}
+	
+	numVal := tpl.NewValue(123).WithCtx(ctx)
+	if numVal.IsString() {
+		t.Errorf("ValueCtx.IsString() for numeric value = %v, want %v", numVal.IsString(), false)
+	}
+	
+	// Test MarshalJSON
+	jsonData, err := strVal.MarshalJSON()
+	if err != nil {
+		t.Errorf("ValueCtx.MarshalJSON() error = %v", err)
+	}
+	if string(jsonData) != "\"test string\"" {
+		t.Errorf("ValueCtx.MarshalJSON() = %v, want %v", string(jsonData), "\"test string\"")
+	}
+	
+	// Test MatchValueType with a valid language string
+	langVal := tpl.NewValue("en-US").WithCtx(ctx)
+	matchedVal, err := langVal.MatchValueType(language.English)
+	if err != nil {
+		t.Errorf("ValueCtx.MatchValueType() error = %v", err)
+	}
+	if _, ok := matchedVal.(language.Tag); !ok {
+		t.Errorf("ValueCtx.MatchValueType() result type = %T, want %T", matchedVal, language.Tag{})
 	}
 }

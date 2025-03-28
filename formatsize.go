@@ -2,6 +2,7 @@ package tpl
 
 import "fmt"
 
+// FormatSize converts a size in bytes to a human-readable format using IEC units.
 func FormatSize(v uint64) string {
 	var siz = [...]struct {
 		unit string
@@ -21,16 +22,24 @@ func FormatSize(v uint64) string {
 
 	vf := float32(v)
 	last := siz[0]
-	for _, i := range siz {
-		if vf < i.size*1.5 {
+	idx := 0
+	for i := 0; i < len(siz); i++ {
+		if i > 0 && vf >= siz[i].size {
+			vf = vf / siz[i].size
+			last = siz[i]
+			idx = i
+		} else if i == 0 && vf >= 1024 {
+			// Special handling for the first conversion
+			vf = vf / 1024
+			idx = 1
+			last = siz[1]
+		} else {
 			break
 		}
-		vf = vf / i.size
-		last = i
 	}
 
-	if last.size > 1 {
-		return fmt.Sprintf("%01.2f %s", vf, last.unit)
+	if idx > 0 {
+		return fmt.Sprintf("%.2f %s", vf, last.unit)
 	} else {
 		return fmt.Sprintf("%.0f %s", vf, last.unit)
 	}
