@@ -75,20 +75,39 @@ func (ctx *step1_context) newTextFragment(txt string) *fragment {
 	return f
 }
 
+// Compile processes all raw templates and builds the internal representation.
+// It returns an error if any template fails to compile.
 func (e *Page) Compile(ctx context.Context) error {
-	// reset values
+	// Check for context cancellation
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// Reset values
 	e.Version = 1
 	e.compiled = make(map[string]internalArray)
 
+	// Verify the template data is valid
 	if !e.Raw.IsValid() {
 		return errors.New("template is not valid (is main template missing?)")
 	}
 
-	// for each raw template, compile
-	var err error
+	// For each raw template, compile
 	for tpl, data := range e.Raw.TemplateData {
-		err = e.compileTpl_step1(ctx, tpl, data)
-		if err != nil {
+		// Check for context cancellation between compiling templates
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		if err := e.compileTpl_step1(ctx, tpl, data); err != nil {
+			// Add context to the error if it's not already our custom error type
+			if _, ok := err.(*Error); !ok {
+				err = &Error{
+					Message:  err.Error(),
+					Template: tpl,
+					Parent:   err,
+				}
+			}
 			return err
 		}
 	}

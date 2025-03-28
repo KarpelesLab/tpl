@@ -1,3 +1,4 @@
+// Package tpl provides a template engine with string interpolation and control structures.
 package tpl
 
 import (
@@ -10,37 +11,45 @@ import (
 	"golang.org/x/text/language"
 )
 
+// ValueReader defines an interface for types that can read a value in a given context.
 type ValueReader interface {
-	ReadValue(ctx context.Context) (interface{}, error)
+	ReadValue(ctx context.Context) (any, error)
 }
 
+// Value defines an interface for template values that can be read and contextualized.
 type Value interface {
-	ReadValue(ctx context.Context) (interface{}, error)
+	ReadValue(ctx context.Context) (any, error)
 	WithCtx(ctx context.Context) *ValueCtx
 }
 
+// WritableValue extends Value with methods for writing output.
 type WritableValue interface {
 	Value
-	Printf(fmt string, arg ...interface{}) (int, error)
+	Printf(fmt string, arg ...any) (int, error)
 	Write([]byte) (int, error)
-	WriteValue(context.Context, interface{}) error
+	WriteValue(context.Context, any) error
 }
 
+// ValueCtx wraps a Value with its associated context.
 type ValueCtx struct {
 	Value
 	ctx context.Context
 }
 
+// Values represents a slice of Value objects.
 type Values []Value
 
+// ArrayAccessGet defines an interface for types that can retrieve a Value by string key.
 type ArrayAccessGet interface {
 	OffsetGet(context.Context, string) (Value, error)
 }
 
+// ArrayAccessGetAny defines an interface for types that can retrieve any value by string key.
 type ArrayAccessGetAny interface {
 	OffsetGet(context.Context, string) (any, error)
 }
 
+// bytableIf defines an interface for types that can be converted to bytes.
 type bytableIf interface {
 	Bytes() []byte
 }
@@ -49,8 +58,10 @@ func NewValueCtx(ctx context.Context, v Value) *ValueCtx {
 	return &ValueCtx{v, ctx}
 }
 
-func (v *ValueCtx) Raw() (interface{}, error) {
-	var res interface{}
+// Raw resolves the wrapped Value by repeatedly calling ReadValue until reaching a non-ValueReader.
+// This allows for nested value resolution.
+func (v *ValueCtx) Raw() (any, error) {
+	var res any
 	var err error
 
 	res = v.Value

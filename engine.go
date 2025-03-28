@@ -1,30 +1,41 @@
+// Package tpl provides a template engine with string interpolation and control structures.
 package tpl
 
 import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"strings"
 	"sync"
 )
 
+// Page represents a template engine instance containing compiled templates.
 type Page struct {
-	Version  int // will be populated on compile
-	Raw      RawData
+	// Version will be populated on compile
+	Version int
+	// Raw contains the template source data
+	Raw RawData
+	// compiled holds the processed templates ready for execution
 	compiled map[string]internalArray
 
-	MaxProcess int // when running parallel compile (0=unlimited)
+	// MaxProcess controls parallel execution of templates
+	// 0 means unlimited concurrency, 1 means serial execution
+	MaxProcess int
 }
 
+// New creates a new template engine instance.
+// The returned Page is ready to have templates added to it
+// and then compiled.
 func New() *Page {
 	e := &Page{}
 	e.Raw.init()
 	return e
 }
 
+// GetMime returns the MIME type for the page.
+// The default value is "text/html" if not explicitly set.
+// If a charset is specified, it will be appended to the MIME type.
 func (e *Page) GetMime() string {
-	// get from Raw
 	res, ok := e.Raw.PageProperties["Content-Type"]
 	if !ok {
 		res = "text/html"
@@ -36,6 +47,8 @@ func (e *Page) GetMime() string {
 	return res
 }
 
+// GetProperty returns the value of a page property.
+// Returns an empty string if the property doesn't exist.
 func (e *Page) GetProperty(p string) string {
 	return e.Raw.PageProperties[p]
 }
@@ -70,8 +83,8 @@ func (n *internalNode) internalParseLink(ctx context.Context, out *interfaceValu
 		if tpl, ok := n.e.compiled[key]; ok {
 			val = tpl.WithCtx(ctx) // keep context in value so when we resolve it we have vars
 		} else {
-			// calling a non-existant link is not an error
-			log.Printf("Accessing non-existing key returns null, key = %s", key)
+			// calling a non-existent link is not an error
+			LogDebug(ctx, "Accessing non-existing key returns null", "key", key)
 			return nil
 		}
 	}
@@ -89,7 +102,15 @@ func (n *internalNode) internalParseLink(ctx context.Context, out *interfaceValu
 	return out.WriteValue(ctx, val)
 }
 
+// run executes the template array in the given context, writing output to the provided interfaceValue.
+// For arrays with multiple nodes, it can run them concurrently if MaxProcess is not 1.
 func (tpl internalArray) run(ctx context.Context, out *interfaceValue) (err error) {
+	// Check for context cancellation
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	
+	// Handle empty array or single node cases
 	if len(tpl) == 0 {
 		return nil
 	}
@@ -97,20 +118,30 @@ func (tpl internalArray) run(ctx context.Context, out *interfaceValue) (err erro
 		return tpl[0].run(ctx, out)
 	}
 
+	// Run serially if MaxProcess is 1
 	if tpl[0].e.MaxProcess == 1 {
-		// special case, single process
 		for _, n := range tpl {
+			// Check for context cancellation between nodes
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			
 			if err = n.run(ctx, out); err != nil {
-				return
+				return err
 			}
 		}
-		return
+		return nil
 	}
 
+	// Run concurrently
 	wg := &sync.WaitGroup{}
 	wg.Add(len(tpl))
 	tOut := make([]*interfaceValue, len(tpl))
 	errorC := make(chan error, len(tpl))
+
+	// Create a separate context that we can cancel if needed
+	execCtx, cancel := context.WithCancel(ctx)
+	defer cancel() // Ensure all goroutines are canceled when we exit
 
 	for i, n := range tpl {
 		tOut[i] = &interfaceValue{}
@@ -119,43 +150,59 @@ func (tpl internalArray) run(ctx context.Context, out *interfaceValue) (err erro
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					errorC <- n.error("panic: %s", r)
-					log.Printf("[tpl] Panic: %s", r)
+					select {
+					case errorC <- n.error("panic: %s", r):
+						LogError(ctx, n.error("panic: %s", r), "Panic in template execution")
+					default:
+						// Channel might be closed if we're already handling errors
+					}
 				}
 			}()
 
-			e := n.run(ctx, o)
+			// Run with the cancellable context
+			e := n.run(execCtx, o)
 			if e != nil {
-				//log.Printf("[tpl] Error inside subtpl: %s", e)
-				errorC <- e
+				select {
+				case errorC <- e:
+					// Signal other goroutines to stop
+					cancel()
+				default:
+					// Channel might be closed if we're already handling errors
+				}
 			}
 		}(tOut[i], n)
 	}
 	wg.Wait()
 
-	// read all errors from channel
+	// Check if original context was canceled during execution
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Read all errors from channel
 	if len(errorC) > 0 {
-		//log.Printf("[tpl] internalArray.run returning subtpl error, stack dump: %s", debug.Stack())
 		err = <-errorC
 		close(errorC)
-		return
+		return err
 	}
 
 	close(errorC)
 
-	// if not, write output
+	// Write output from all nodes
 	for _, lOut := range tOut {
-		err = out.WriteValue(ctx, lOut)
-		if err != nil {
-			log.Printf("got err = %s", err)
-			return
+		if err = out.WriteValue(ctx, lOut); err != nil {
+			LogError(ctx, err, "Error writing template value")
+			return err
 		}
 	}
 
-	return
+	return nil
 }
 
-func (n internalArray) ReadValue(ctx context.Context) (interface{}, error) {
+// ReadValue executes the template array and returns its value.
+func (n internalArray) ReadValue(ctx context.Context) (any, error) {
 	buf := &interfaceValue{}
 	err := n.run(ctx, buf)
 	if err != nil {
@@ -164,11 +211,13 @@ func (n internalArray) ReadValue(ctx context.Context) (interface{}, error) {
 	return buf.ReadValue(ctx)
 }
 
+// WithCtx returns a ValueCtx that wraps this internalArray with the given context.
 func (n internalArray) WithCtx(ctx context.Context) *ValueCtx {
 	return &ValueCtx{n, ctx}
 }
 
-func (n *internalNode) ReadValue(ctx context.Context) (interface{}, error) {
+// ReadValue executes the node and returns its value.
+func (n *internalNode) ReadValue(ctx context.Context) (any, error) {
 	buf := &interfaceValue{}
 	err := n.run(ctx, buf)
 	if err != nil {
@@ -177,6 +226,7 @@ func (n *internalNode) ReadValue(ctx context.Context) (interface{}, error) {
 	return buf.WithCtx(ctx).Raw()
 }
 
+// WithCtx returns a ValueCtx that wraps this node with the given context.
 func (n *internalNode) WithCtx(ctx context.Context) *ValueCtx {
 	return &ValueCtx{n, ctx}
 }
@@ -219,12 +269,22 @@ func (n *internalNode) isStatic() bool {
 	}
 }
 
+// ToValues converts the array's value to Values type.
+// If the value is already a Values type, it's returned as is.
+// Otherwise, it wraps the value in a single-element Values slice.
 func (a internalArray) ToValues(ctx context.Context) (Values, error) {
-	// only call if ok
+	// Check for context cancellation
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	// Get raw value
 	params, err := a.WithCtx(ctx).Raw()
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert to Values
 	vparams, ok := params.(Values)
 	if !ok {
 		vparams = Values{AsOutValue(ctx, params)}
@@ -437,27 +497,42 @@ func (n *internalNode) run(ctx context.Context, out *interfaceValue) error {
 	return nil
 }
 
+// HasTpl returns true if the template exists in the compiled templates.
 func (e *Page) HasTpl(tpl string) bool {
 	_, ok := e.compiled[tpl]
 	return ok
 }
 
+// Parse executes the named template in the given context, writing output to the provided interfaceValue.
+// Returns ErrTplNotFound if the template doesn't exist.
 func (e *Page) Parse(ctx context.Context, tpl string, out *interfaceValue) error {
-	tpl_data, ok := e.compiled[tpl]
+	// Check for context cancellation
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	tplData, ok := e.compiled[tpl]
 	if !ok {
 		return ErrTplNotFound
 	}
-	return tpl_data.run(ctx, out)
+	return tplData.run(ctx, out)
 }
 
+// ParseAndWrite executes the named template in the given context, writing output to the provided io.Writer.
+// Returns ErrTplNotFound if the template doesn't exist.
 func (e *Page) ParseAndWrite(ctx context.Context, tpl string, out io.Writer) error {
 	return e.Parse(ctx, tpl, makeValue(out))
 }
 
+// ParseAndReturn executes the named template in the given context and returns the result as a string.
+// Returns an empty string and ErrTplNotFound if the template doesn't exist.
 func (e *Page) ParseAndReturn(ctx context.Context, tpl string) (string, error) {
+	// Check for context cancellation
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+
 	buf := &bytes.Buffer{}
-
 	err := e.ParseAndWrite(ctx, tpl, buf)
-
 	return buf.String(), err
 }
