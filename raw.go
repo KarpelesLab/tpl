@@ -3,14 +3,13 @@ package tpl
 import (
 	"archive/zip"
 	"encoding/json"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/KarpelesLab/vfs"
 )
 
 // RawData contains the raw (uncompiled) data for current template
@@ -40,7 +39,7 @@ func grabZipFile(f *zip.File) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func grabVfsFile(fs vfs.FileSystem, path string) ([]byte, error) {
+func grabVfsFile(fs fs.FS, path string) ([]byte, error) {
 	r, err := fs.Open(path)
 	if err != nil {
 		return nil, err
@@ -150,10 +149,10 @@ func (res *RawData) FromDir(d ...string) error {
 	return nil
 }
 
-func (res *RawData) FromVfs(fs vfs.FileSystem, d ...string) error {
+func (res *RawData) FromVfs(src fs.FS, d ...string) error {
 	for _, rd := range d {
 		// first, read properties
-		data, err := grabVfsFile(fs, path.Join(rd, "_properties.json"))
+		data, err := grabVfsFile(src, path.Join(rd, "_properties.json"))
 		if err != nil {
 			// not found?
 			return nil
@@ -171,7 +170,7 @@ func (res *RawData) FromVfs(fs vfs.FileSystem, d ...string) error {
 		}
 
 		// now, let's grab all files (TODO read dir rather than relying on glob)
-		m, err := vfs.ReadDir(fs, rd)
+		m, err := fs.ReadDir(src, rd)
 		if err != nil {
 			return err
 		}
@@ -182,7 +181,7 @@ func (res *RawData) FromVfs(fs vfs.FileSystem, d ...string) error {
 				continue
 			}
 
-			data, err = grabVfsFile(fs, path.Join(rd, n))
+			data, err = grabVfsFile(src, path.Join(rd, n))
 			if err != nil {
 				return err
 			}

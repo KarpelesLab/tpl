@@ -6,7 +6,6 @@ toolchain go1.23.1
 
 require (
 	github.com/KarpelesLab/strftime v1.0.0
-	github.com/KarpelesLab/vfs v0.1.0
 	github.com/KarpelesLab/webutil v0.2.2
 	github.com/frustra/bbcode v0.0.0-20201127003707-6ef347fbe1c8
 	github.com/microcosm-cc/bluemonday v1.0.27
