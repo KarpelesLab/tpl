@@ -10,10 +10,15 @@ This document describes the syntax and capabilities of the TPL-GO template engin
 - Escape delimiters with backslash: `\{{` to render literal `{{`
 - Use `{{literal}}...{{/literal}}` to render enclosed content as literal text without processing
 
+### Template Inclusion
+- `{{NAME}}` without underscore prefix includes another template file (e.g., `{{HEADER}}` includes header.tpl)
+- Templates can be included with parameters: `{{HEADER foo="bar"}}`
+- Parameters become available as variables in the included template
+
 ### Variables
-- Variables are accessed within delimiters: `{{VARIABLE_NAME}}`
+- Variables are accessed within delimiters: `{{_VARIABLE_NAME}}`
 - Variable names are case-sensitive
-- Prefixing variables with underscore is conventional (e.g., `{{_VARIABLE}}`)
+- Variables **must** be prefixed with underscore (e.g., `{{_VARIABLE}}`) to distinguish from template inclusion
 - Access nested properties with forward slash: `{{_OBJECT/property}}`
 - Array elements accessed by index: `{{_ARRAY/0}}`
 
