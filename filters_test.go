@@ -278,3 +278,235 @@ func TestFilterMarkdown(t *testing.T) {
 		t.Errorf("got %q, want %q", result, "<p><strong>hello</strong></p>\n")
 	}
 }
+
+func TestFilterLengthArray(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"slice_len", `{{_val|length()}}`, map[string]any{"_val": []string{"a", "b", "c"}}, "3"},
+		{"empty_slice", `{{_val|length()}}`, map[string]any{"_val": []string{}}, "0"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFilterReverseArray(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{_val|reverse()|implode(",")}}`
+
+	ctx := context.Background()
+	ctx = tpl.ValuesCtx(ctx, map[string]any{
+		"_val": []string{"a", "b", "c"},
+	})
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	result, err := engine.ParseAndReturn(ctx, "main")
+	if err != nil {
+		t.Fatalf("ParseAndReturn failed: %v", err)
+	}
+
+	if result != "c,b,a" {
+		t.Errorf("got %q, want %q", result, "c,b,a")
+	}
+}
+
+
+func TestFilterSizeNegative(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{_val|size()}}`
+
+	ctx := context.Background()
+	ctx = tpl.ValuesCtx(ctx, map[string]any{
+		"_val": -1024,
+	})
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	result, err := engine.ParseAndReturn(ctx, "main")
+	if err != nil {
+		t.Fatalf("ParseAndReturn failed: %v", err)
+	}
+
+	if result != "-1.00 kiB" {
+		t.Errorf("got %q, want %q", result, "-1.00 kiB")
+	}
+}
+
+func TestFilterJsonWithMap(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{_val|json()}}`
+
+	ctx := context.Background()
+	ctx = tpl.ValuesCtx(ctx, map[string]any{
+		"_val": map[string]int{"a": 1},
+	})
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	result, err := engine.ParseAndReturn(ctx, "main")
+	if err != nil {
+		t.Fatalf("ParseAndReturn failed: %v", err)
+	}
+
+	if result != `{"a":1}` {
+		t.Errorf("got %q, want %q", result, `{"a":1}`)
+	}
+}
+
+func TestFilterRoundModes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"round_2_decimals", `{{_val|round(2)}}`, map[string]any{"_val": 3.14159}, "3.14"},
+		{"round_0_decimals", `{{_val|round(0)}}`, map[string]any{"_val": 3.5}, "4"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFilterToInt(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"from_string", `{{_val|toint()}}`, map[string]any{"_val": "42"}, "42"},
+		{"from_float", `{{_val|toint()}}`, map[string]any{"_val": 3.7}, "4"},
+		{"from_bool_true", `{{_val|toint()}}`, map[string]any{"_val": true}, "1"},
+		{"from_bool_false", `{{_val|toint()}}`, map[string]any{"_val": false}, "0"},
+		{"from_int8", `{{_val|toint()}}`, map[string]any{"_val": int8(42)}, "42"},
+		{"from_int16", `{{_val|toint()}}`, map[string]any{"_val": int16(42)}, "42"},
+		{"from_int32", `{{_val|toint()}}`, map[string]any{"_val": int32(42)}, "42"},
+		{"from_int64", `{{_val|toint()}}`, map[string]any{"_val": int64(42)}, "42"},
+		{"from_uint8", `{{_val|toint()}}`, map[string]any{"_val": uint8(42)}, "42"},
+		{"from_uint16", `{{_val|toint()}}`, map[string]any{"_val": uint16(42)}, "42"},
+		{"from_uint32", `{{_val|toint()}}`, map[string]any{"_val": uint32(42)}, "42"},
+		{"from_nil", `{{_val|toint()}}`, map[string]any{"_val": nil}, "0"},
+		{"from_bytes", `{{_val|toint()}}`, map[string]any{"_val": []byte("123")}, "123"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBoolConversion(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"empty_map", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": map[string]any{}}, "no"},
+		{"nonempty_map", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": map[string]any{"a": 1}}, "yes"},
+		{"empty_slice", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": []any{}}, "no"},
+		{"nonempty_slice", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": []any{1}}, "yes"},
+		{"string_zero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": "0"}, "no"},
+		{"string_one", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": "1"}, "yes"},
+		{"bytes_zero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": []byte("0")}, "no"},
+		{"bytes_one", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": []byte("1")}, "yes"},
+		{"int64_zero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": int64(0)}, "no"},
+		{"int64_nonzero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": int64(42)}, "yes"},
+		{"float64_zero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": float64(0)}, "no"},
+		{"float64_nonzero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": float64(3.14)}, "yes"},
+		{"uint64_nonzero", `{{if {{_val}}}}yes{{else}}no{{/if}}`, map[string]any{"_val": uint64(1)}, "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}

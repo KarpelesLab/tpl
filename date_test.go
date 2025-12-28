@@ -74,6 +74,90 @@ func TestDateFilter(t *testing.T) {
 	}
 }
 
+func TestDateFilterEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		check    func(string) bool
+	}{
+		{
+			"microtime_map",
+			`{{_val|date("%Y")}}`,
+			map[string]any{"_val": map[string]any{"full": "0000001"}},
+			func(s string) bool { return s == "1970" },
+		},
+		{
+			"bytes_input",
+			`{{_val|date("%Y")}}`,
+			map[string]any{"_val": []byte("@0")},
+			func(s string) bool { return s == "1970" },
+		},
+		{
+			"empty_format",
+			`{{_val|date("")}}`,
+			map[string]any{"_val": "@0"},
+			func(s string) bool { return len(s) > 0 },
+		},
+		{
+			"invalid_date",
+			`{{_val|date()}}`,
+			map[string]any{"_val": "invalid"},
+			func(s string) bool { return s == "N/A" },
+		},
+		{
+			"long_fractional",
+			`{{_val|date("%Y")}}`,
+			map[string]any{"_val": "@0.123456789012"},
+			func(s string) bool { return s == "1970" },
+		},
+		{
+			"trailing_dot",
+			`{{_val|date("%Y")}}`,
+			map[string]any{"_val": "@0."},
+			func(s string) bool { return s == "1970" },
+		},
+		{
+			"short_fractional",
+			`{{_val|date("%Y")}}`,
+			map[string]any{"_val": "@0.1"},
+			func(s string) bool { return s == "1970" },
+		},
+		{
+			"nil_value",
+			`{{_val|date()}}`,
+			map[string]any{"_val": nil},
+			func(s string) bool { return s == "N/A" },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = context.WithValue(ctx, "_language", language.English) //lint:ignore SA1029 template variables use string keys by design
+			if tt.vars != nil {
+				ctx = tpl.ValuesCtx(ctx, tt.vars)
+			}
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if !tt.check(result) {
+				t.Errorf("check failed for result %q", result)
+			}
+		})
+	}
+}
+
 func TestDurationFilter(t *testing.T) {
 	tests := []struct {
 		name     string

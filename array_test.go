@@ -109,6 +109,112 @@ func TestResolveValueIndex(t *testing.T) {
 	}
 }
 
+func TestResolveValueIndexEdgeCases(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		value    any
+		index    string
+		expected any
+		hasError bool
+	}{
+		{
+			"nil_value",
+			nil,
+			"key",
+			nil,
+			false,
+		},
+		{
+			"slice_out_of_bounds_high",
+			[]any{"a", "b", "c"},
+			"10",
+			nil,
+			false,
+		},
+		{
+			"slice_out_of_bounds_negative",
+			[]any{"a", "b", "c"},
+			"-1",
+			nil,
+			false,
+		},
+		{
+			"slice_invalid_index",
+			[]any{"a", "b", "c"},
+			"notanumber",
+			nil,
+			false,
+		},
+		{
+			"string_slice_out_of_bounds",
+			[]string{"a", "b", "c"},
+			"10",
+			nil,
+			false,
+		},
+		{
+			"string_slice_invalid_index",
+			[]string{"a", "b", "c"},
+			"invalid",
+			nil,
+			false,
+		},
+		{
+			"json_invalid",
+			json.RawMessage(`{invalid json}`),
+			"key",
+			nil,
+			true,
+		},
+		{
+			"unhandled_type",
+			42, // int is not a valid type for indexing
+			"0",
+			nil,
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tpl.ResolveValueIndex(ctx, tt.value, tt.index)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("expected error, got nil (result: %v)", result)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("ResolveValueIndex failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResolveValueIndexMapJSON(t *testing.T) {
+	ctx := context.Background()
+	m := map[string]json.RawMessage{"key": json.RawMessage(`"value"`)}
+	result, err := tpl.ResolveValueIndex(ctx, m, "key")
+	if err != nil {
+		t.Fatalf("ResolveValueIndex failed: %v", err)
+	}
+	resJSON, ok := result.(json.RawMessage)
+	if !ok {
+		t.Fatalf("expected json.RawMessage, got %T", result)
+	}
+	if string(resJSON) != `"value"` {
+		t.Errorf("got %s, want %s", string(resJSON), `"value"`)
+	}
+}
+
 func TestArrayAccess(t *testing.T) {
 	engine := tpl.New()
 	engine.Raw.TemplateData["main"] = `{{_obj/key}}`

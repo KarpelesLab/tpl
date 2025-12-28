@@ -1,4 +1,5 @@
 [![GoDoc](https://godoc.org/github.com/KarpelesLab/tpl?status.svg)](https://godoc.org/github.com/KarpelesLab/tpl)
+[![Build Status](https://github.com/KarpelesLab/tpl/actions/workflows/test.yml/badge.svg)](https://github.com/KarpelesLab/tpl/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/KarpelesLab/tpl/badge.svg?branch=master)](https://coveralls.io/github/KarpelesLab/tpl?branch=master)
 
 # Template Engine for Go
