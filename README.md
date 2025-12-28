@@ -12,18 +12,6 @@ This is a legacy template engine system, made to be compatible with an older ver
 - Structured error handling with location information
 - Context-aware template execution
 
-## Recent Modernization
-
-This codebase has been updated to use modern Go practices:
-
-- Added comprehensive documentation with GoDoc-compatible comments
-- Replaced `interface{}` with `any` type alias
-- Enhanced error handling with `errors.Is()` and `errors.As()` support
-- Added proper context cancellation handling
-- Implemented structured logging with log/slog
-- Improved concurrency patterns
-- Applied generics for type-safe operations
-
 ## Usage
 
 See the [SYNTAX.md](SYNTAX.md) file for template syntax documentation.
@@ -43,12 +31,12 @@ func main() {
 	engine := tpl.New()
 	
 	// Add a template
-	engine.Raw.TemplateData["main"] = "Hello {{name}}!"
-	
+	engine.Raw.TemplateData["main"] = "Hello {{_name}}!"
+
 	// Set up a context with variables
 	ctx := context.Background()
 	ctx = tpl.ValuesCtx(ctx, map[string]any{
-		"name": "World",
+		"_name": "World",
 	})
 	
 	// Compile templates
