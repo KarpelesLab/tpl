@@ -62,7 +62,7 @@ func TestCallFunction(t *testing.T) {
 		return out.WriteValue(ctx, "test function result")
 	}
 	
-	ctx = context.WithValue(ctx, "@test_function", tpl.TplFuncCallback(testFn))
+	ctx = context.WithValue(ctx, "@test_function", tpl.TplFuncCallback(testFn)) //lint:ignore SA1029 template functions use string keys by design
 	
 	// Call the function
 	out := tpl.NewEmptyValue()

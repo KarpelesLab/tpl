@@ -135,7 +135,7 @@ func fetchNumberInt(ctx context.Context, v interface{}) (int64, bool) {
 		res, err := strconv.ParseInt(string(n), 0, 64)
 		return res, err == nil
 	case *bytes.Buffer:
-		return fetchNumberInt(ctx, string(n.Bytes()))
+		return fetchNumberInt(ctx, n.String())
 	case nil:
 		return 0, true
 	case ValueReader:

@@ -53,7 +53,7 @@ func TestValuesCtx(t *testing.T) {
 	}
 	
 	// Test parent context value retrieval
-	parentCtx := context.WithValue(baseCtx, "parent_key", "parent_value")
+	parentCtx := context.WithValue(baseCtx, "parent_key", "parent_value") //lint:ignore SA1029 template variables use string keys by design
 	ctx4 := tpl.ValuesCtx(parentCtx, testValues)
 	
 	if val := ctx4.Value("parent_key"); val != "parent_value" {

@@ -21,8 +21,8 @@ func (m *mockLogger) LogWarn(msg string, arg ...any) {
 }
 
 func TestLogWarn(t *testing.T) {
-	// Test with nil context
-	tpl.LogWarn(nil, "test message", "arg1", 123)
+	// Test with nil context (use context.TODO as recommended)
+	tpl.LogWarn(context.TODO(), "test message", "arg1", 123)
 
 	// Test with context but no logger
 	ctx := context.Background()
@@ -47,8 +47,8 @@ func TestLogWarn(t *testing.T) {
 func TestLogError(t *testing.T) {
 	err := errors.New("test error")
 	
-	// Test with nil context
-	tpl.LogError(nil, err, "error occurred", "arg1", 123)
+	// Test with nil context (use context.TODO as recommended)
+	tpl.LogError(context.TODO(), err, "error occurred", "arg1", 123)
 
 	// Test with context, no logger
 	ctx := context.Background()
@@ -65,8 +65,8 @@ func TestLogError(t *testing.T) {
 }
 
 func TestLogDebug(t *testing.T) {
-	// Test with nil context
-	tpl.LogDebug(nil, "debug message", "arg1", 123)
+	// Test with nil context (use context.TODO as recommended)
+	tpl.LogDebug(context.TODO(), "debug message", "arg1", 123)
 
 	// Test with context, no logger
 	ctx := context.Background()

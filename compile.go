@@ -257,7 +257,7 @@ Loop:
 				for j := 0; j < len(txt); j++ {
 					switch txt[j] {
 					case ' ', '\r', '\n', '\t':
-						break // NOOP
+						// NOOP - skip whitespace
 					case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.':
 						val = val + string(txt[j])
 					default:

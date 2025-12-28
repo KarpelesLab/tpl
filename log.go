@@ -49,7 +49,7 @@ func LogError(ctx context.Context, err error, msg string, arg ...any) {
 
 	// Try to use context-specific logger first
 	if c, ok := ctx.Value(TplCtxLog).(interface{ LogError(string, error, ...any) }); ok {
-		c.(interface{ LogError(string, error, ...any) }).LogError(msg, err, arg...)
+		c.LogError(msg, err, arg...)
 		return
 	}
 
@@ -78,7 +78,7 @@ func LogDebug(ctx context.Context, msg string, arg ...any) {
 
 	// Try to use context-specific logger first
 	if c, ok := ctx.Value(TplCtxLog).(interface{ LogDebug(string, ...any) }); ok {
-		c.(interface{ LogDebug(string, ...any) }).LogDebug(msg, arg...)
+		c.LogDebug(msg, arg...)
 		return
 	}
 

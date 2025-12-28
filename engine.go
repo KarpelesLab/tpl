@@ -242,7 +242,7 @@ func (a internalArray) isStatic() bool {
 
 func (n *internalNode) isStatic() bool {
 	// check if this node is static
-	if n.filters != nil && len(n.filters) > 0 {
+	if len(n.filters) > 0 {
 		return false
 	}
 
@@ -294,7 +294,7 @@ func (a internalArray) ToValues(ctx context.Context) (Values, error) {
 
 func (n *internalNode) run(ctx context.Context, out *interfaceValue) error {
 	target := out
-	if n.filters != nil && len(n.filters) > 0 {
+	if len(n.filters) > 0 {
 		// variable setting filters
 		v := make(map[string]interface{})
 		ctx2 := ValuesCtxAlways(ctx, v)
@@ -445,9 +445,9 @@ func (n *internalNode) run(ctx context.Context, out *interfaceValue) error {
 			if len(n.sub) > 1 {
 				ctx2 := ctx
 				if n.str != "" {
-					ctx2 = context.WithValue(ctx2, n.str, err)
+					ctx2 = context.WithValue(ctx2, n.str, err) //lint:ignore SA1029 template variables use string keys by design
 				} else {
-					ctx2 = context.WithValue(ctx2, "_exception", err)
+					ctx2 = context.WithValue(ctx2, "_exception", err) //lint:ignore SA1029 template variables use string keys by design
 				}
 				err2 := n.sub[1].run(ctx2, target)
 				if err2 != nil {

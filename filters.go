@@ -317,11 +317,11 @@ func fltImplode(ctx context.Context, params Values, in Value, out WritableValue)
 	if err != nil {
 		return err
 	}
-	switch val.(type) {
+	switch val := val.(type) {
 	case []string:
-		return out.WriteValue(ctx, strings.Join(val.([]string), params[0].WithCtx(ctx).String()))
+		return out.WriteValue(ctx, strings.Join(val, params[0].WithCtx(ctx).String()))
 	case [][]byte:
-		return out.WriteValue(ctx, bytes.Join(val.([][]byte), params[0].WithCtx(ctx).Bytes()))
+		return out.WriteValue(ctx, bytes.Join(val, params[0].WithCtx(ctx).Bytes()))
 	default:
 		return out.WriteValue(ctx, val)
 	}

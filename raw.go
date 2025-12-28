@@ -3,8 +3,8 @@ package tpl
 import (
 	"archive/zip"
 	"encoding/json"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -36,7 +36,7 @@ func grabZipFile(f *zip.File) ([]byte, error) {
 	defer r.Close()
 
 	// read all
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func grabVfsFile(fs fs.FS, path string) ([]byte, error) {
@@ -47,7 +47,7 @@ func grabVfsFile(fs fs.FS, path string) ([]byte, error) {
 	defer r.Close()
 
 	// read all
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func grabFile(path string) ([]byte, error) {
@@ -58,7 +58,7 @@ func grabFile(path string) ([]byte, error) {
 	defer r.Close()
 
 	// read all
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func (r *RawData) IsValid() bool {

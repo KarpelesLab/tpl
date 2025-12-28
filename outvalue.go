@@ -205,7 +205,7 @@ func (v *interfaceValue) MarshalJSON() ([]byte, error) {
 	case []byte:
 		return json.Marshal(string(r))
 	case *bytes.Buffer:
-		return json.Marshal(string(r.Bytes()))
+		return json.Marshal(r.String())
 	default:
 		return json.Marshal(v.val)
 	}

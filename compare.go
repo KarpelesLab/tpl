@@ -36,7 +36,7 @@ func CompareValues(ctx context.Context, o1, o2 interface{}) (bool, error) {
 
 	switch o1v := o1.(type) {
 	case []byte:
-		return bytes.Compare(o1v, o2.([]byte)) == 0, nil
+		return bytes.Equal(o1v, o2.([]byte)), nil
 	default:
 		return o1 == o2, nil
 	}

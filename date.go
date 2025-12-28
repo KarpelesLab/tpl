@@ -106,13 +106,13 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 			pos := strings.IndexByte(r, '.')
 			if pos == -1 {
 				// pure integer
-				v, err := strconv.ParseInt(r, 64, 10)
+				v, err := strconv.ParseInt(r, 10, 64)
 				if err != nil {
 					return time.Time{}, err
 				}
 				return time.Unix(v, 0), nil
 			}
-			unix_t, err := strconv.ParseInt(r[:pos], 64, 10)
+			unix_t, err := strconv.ParseInt(r[:pos], 10, 64)
 			if err != nil {
 				return time.Time{}, err
 			}
@@ -127,7 +127,7 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 			} else if len(r) > 9 {
 				r = r[:9]
 			}
-			unix_us, err := strconv.ParseInt(r, 64, 10)
+			unix_us, err := strconv.ParseInt(r, 10, 64)
 			if err != nil {
 				return time.Time{}, err
 			}
@@ -172,7 +172,7 @@ func parseDate(ctx context.Context, in interface{}) (time.Time, error) {
 	case []byte:
 		return parseDate(ctx, string(r))
 	case *bytes.Buffer:
-		return parseDate(ctx, string(r.Bytes()))
+		return parseDate(ctx, r.String())
 	case ValueReader:
 		v, err := r.ReadValue(ctx)
 		if err != nil {

@@ -143,6 +143,8 @@ func (v *ValueCtx) StringErr() (string, error) {
 		return rv, nil
 	case []byte:
 		return string(rv), nil
+	case *ValueCtx:
+		return rv.String(), nil
 	case fmt.Stringer:
 		return rv.String(), nil
 	case bytableIf:
@@ -165,8 +167,6 @@ func (v *ValueCtx) StringErr() (string, error) {
 			res.WriteString(sub.WithCtx(v.ctx).String())
 		}
 		return res.String(), nil
-	case *ValueCtx:
-		return rv.String(), nil
 	case bool:
 		if rv {
 			return "1", nil
@@ -221,6 +221,8 @@ func (v *ValueCtx) BytesErr() ([]byte, error) {
 		return []byte(strconv.FormatFloat(float64(rv), 'g', 14, 32)), nil
 	case float64:
 		return []byte(strconv.FormatFloat(rv, 'g', 14, 64)), nil
+	case *ValueCtx:
+		return rv.Bytes(), nil
 	case bytableIf:
 		return rv.Bytes(), nil
 	case fmt.Stringer:
@@ -243,8 +245,6 @@ func (v *ValueCtx) BytesErr() ([]byte, error) {
 			res.Write(sub.WithCtx(v.ctx).Bytes())
 		}
 		return res.Bytes(), nil
-	case *ValueCtx:
-		return rv.Bytes(), nil
 	case bool:
 		if rv {
 			return []byte{'1'}, nil
