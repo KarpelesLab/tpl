@@ -2,6 +2,7 @@ package tpl_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/KarpelesLab/tpl"
@@ -368,3 +369,431 @@ func TestMathWithVariables(t *testing.T) {
 	}
 }
 
+func TestBitwiseNotOperator(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"not_bool_true", `{{set _x=(~{{_a}})}}{{_x}}{{/set}}`, map[string]any{"_a": true}, ""},
+		{"not_bool_false", `{{set _x=(~{{_a}})}}{{_x}}{{/set}}`, map[string]any{"_a": false}, "1"},
+		{"not_int", `{{set _x=(~{{_a}})}}{{_x}}{{/set}}`, map[string]any{"_a": int64(0)}, "9223372036854775807"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFloatComparisonOperators(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"float_less_than", `{{if (1.5 < 2.5)}}yes{{else}}no{{/if}}`, "yes"},
+		{"float_less_equal", `{{if (2.5 <= 2.5)}}yes{{else}}no{{/if}}`, "yes"},
+		{"float_greater_than", `{{if (3.5 > 2.5)}}yes{{else}}no{{/if}}`, "yes"},
+		{"float_greater_equal", `{{if (2.5 >= 2.5)}}yes{{else}}no{{/if}}`, "yes"},
+		{"float_equal", `{{if (2.5 == 2.5)}}yes{{else}}no{{/if}}`, "yes"},
+		{"float_not_equal", `{{if (2.5 != 3.5)}}yes{{else}}no{{/if}}`, "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestBoolOperatorEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"bool_equal_true", `{{if ({{_a}} == {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": true, "_b": true}, "yes"},
+		{"bool_equal_false", `{{if ({{_a}} == {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": true, "_b": false}, "no"},
+		{"bool_not_equal", `{{if ({{_a}} != {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": true, "_b": false}, "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMathWithUintTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"uint8_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": uint8(10), "_b": uint8(5)}, "15"},
+		{"uint16_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": uint16(100), "_b": uint16(50)}, "150"},
+		{"uint32_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": uint32(1000), "_b": uint32(500)}, "1500"},
+		{"uint_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": uint(42), "_b": uint(8)}, "50"},
+		{"uint8_multiply", `{{set _x=({{_a}} * {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": uint8(7), "_b": uint8(6)}, "42"},
+		{"uint16_comparison_gt", `{{if ({{_a}} > {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": uint16(10), "_b": uint16(5)}, "yes"},
+		{"uint32_comparison_lt", `{{if ({{_a}} < {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": uint32(3), "_b": uint32(8)}, "yes"},
+		{"uint8_comparison_eq", `{{if ({{_a}} == {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": uint8(42), "_b": uint8(42)}, "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMathWithFloatTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"float32_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": float32(1.5), "_b": float32(2.5)}, "4"},
+		{"float64_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": float64(10.25), "_b": float64(5.75)}, "16"},
+		{"float_multiply", `{{set _x=({{_a}} * {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": float64(2.5), "_b": float64(4.0)}, "10"},
+		{"float_divide", `{{set _x=({{_a}} / {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": float64(10.0), "_b": float64(4.0)}, "2.5"},
+		{"float_comparison_gt", `{{if ({{_a}} > {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": float64(3.14), "_b": float64(2.71)}, "yes"},
+		{"float_comparison_lt", `{{if ({{_a}} < {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": float64(1.5), "_b": float64(2.5)}, "yes"},
+		{"float_int_mixed", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": float64(1.5), "_b": int64(2)}, "3.5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMathWithMixedIntTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"int8_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int8(10), "_b": int8(5)}, "15"},
+		{"int16_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int16(100), "_b": int16(50)}, "150"},
+		{"int32_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int32(1000), "_b": int32(500)}, "1500"},
+		{"int_add", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int(42), "_b": int(8)}, "50"},
+		{"int8_int64_mixed", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int8(10), "_b": int64(20)}, "30"},
+		{"int_uint_mixed", `{{set _x=({{_a}} + {{_b}})}}{{_x}}{{/set}}`, map[string]any{"_a": int64(10), "_b": uint64(20)}, "30"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+
+func TestRandFunction(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{@rand(1, 100)}}`
+
+	ctx := context.Background()
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	result, err := engine.ParseAndReturn(ctx, "main")
+	if err != nil {
+		t.Fatalf("ParseAndReturn failed: %v", err)
+	}
+
+	// rand() should return some value
+	if result == "" {
+		t.Error("rand() returned empty string")
+	}
+}
+
+func TestRandFunctionMultipleCalls(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{@rand(0, 10)}}-{{@rand(0, 10)}}`
+
+	ctx := context.Background()
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	result, err := engine.ParseAndReturn(ctx, "main")
+	if err != nil {
+		t.Fatalf("ParseAndReturn failed: %v", err)
+	}
+
+	// Should contain a hyphen separating two numbers
+	if result == "" || !strings.Contains(result, "-") {
+		t.Errorf("rand() returned unexpected result: %q", result)
+	}
+}
+
+func TestPrintfFunction(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"string", `{{@printf("%s", {{_val}})}}`, map[string]any{"_val": "hello"}, "hello"},
+		{"int", `{{@printf("%d", {{_val}})}}`, map[string]any{"_val": 42}, "42"},
+		{"float", `{{@printf("%.2f", {{_val}})}}`, map[string]any{"_val": 3.14159}, "3.14"},
+		{"multiple", `{{@printf("%s=%d", {{_a}}, {{_b}})}}`, map[string]any{"_a": "x", "_b": 5}, "x=5"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestStringFunction(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		expected string
+	}{
+		{"simple", `{{@string("hello")}}`, "hello"},
+		{"with_special", `{{@string("a=b&c=d")}}`, "a=b&c=d"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestErrorFunction(t *testing.T) {
+	engine := tpl.New()
+	engine.Raw.TemplateData["main"] = `{{@error("test error message")}}`
+
+	ctx := context.Background()
+
+	if err := engine.Compile(ctx); err != nil {
+		t.Fatalf("Compile failed: %v", err)
+	}
+
+	_, err := engine.ParseAndReturn(ctx, "main")
+	if err == nil {
+		t.Error("Expected error from @error function")
+	}
+}
+
+func TestComparisonOperatorsWithStrings(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"string_eq", `{{if ({{_a}} == {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": "hello", "_b": "hello"}, "yes"},
+		{"string_ne", `{{if ({{_a}} != {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": "hello", "_b": "world"}, "yes"},
+		{"string_eq_false", `{{if ({{_a}} == {{_b}})}}yes{{else}}no{{/if}}`, map[string]any{"_a": "hello", "_b": "world"}, "no"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNestedMathExpressions(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		vars     map[string]any
+		expected string
+	}{
+		{"nested_add", `{{set _x=(({{_a}} + {{_b}}) + {{_c}})}}{{_x}}{{/set}}`, map[string]any{"_a": int64(1), "_b": int64(2), "_c": int64(3)}, "6"},
+		{"nested_mult_add", `{{set _x=(({{_a}} * {{_b}}) + {{_c}})}}{{_x}}{{/set}}`, map[string]any{"_a": int64(2), "_b": int64(3), "_c": int64(4)}, "10"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := tpl.New()
+			engine.Raw.TemplateData["main"] = tt.template
+
+			ctx := context.Background()
+			ctx = tpl.ValuesCtx(ctx, tt.vars)
+
+			if err := engine.Compile(ctx); err != nil {
+				t.Fatalf("Compile failed: %v", err)
+			}
+
+			result, err := engine.ParseAndReturn(ctx, "main")
+			if err != nil {
+				t.Fatalf("ParseAndReturn failed: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}

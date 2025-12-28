@@ -102,3 +102,52 @@ func TestRawUrlEncodeFilter(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryEscapeAnyDirectTypes(t *testing.T) {
+	ctx := context.Background()
+
+	// Test raw string
+	if result := tpl.QueryEscapeAny(ctx, "hello world"); result != "hello+world" {
+		t.Errorf("string: got %q, want %q", result, "hello+world")
+	}
+
+	// Test raw []byte
+	if result := tpl.QueryEscapeAny(ctx, []byte("test data")); result != "test+data" {
+		t.Errorf("[]byte: got %q, want %q", result, "test+data")
+	}
+
+	// Test bytes.Buffer
+	buf := bytes.Buffer{}
+	buf.WriteString("buffer content")
+	if result := tpl.QueryEscapeAny(ctx, buf); result != "buffer+content" {
+		t.Errorf("bytes.Buffer: got %q, want %q", result, "buffer+content")
+	}
+
+	// Test nil
+	if result := tpl.QueryEscapeAny(ctx, nil); result != "" {
+		t.Errorf("nil: got %q, want %q", result, "")
+	}
+
+	// Test int
+	if result := tpl.QueryEscapeAny(ctx, 42); result != "42" {
+		t.Errorf("int: got %q, want %q", result, "42")
+	}
+
+	// Test int64
+	if result := tpl.QueryEscapeAny(ctx, int64(123)); result != "123" {
+		t.Errorf("int64: got %q, want %q", result, "123")
+	}
+
+	// Test uint64
+	if result := tpl.QueryEscapeAny(ctx, uint64(456)); result != "456" {
+		t.Errorf("uint64: got %q, want %q", result, "456")
+	}
+
+	// Test map[string]interface{}
+	m := map[string]interface{}{"a": "1", "b": "2"}
+	result := tpl.QueryEscapeAny(ctx, m)
+	// Map order is not guaranteed, but it should contain both key-value pairs
+	if result != "a=1&b=2" && result != "b=2&a=1" {
+		t.Errorf("map: got %q, want 'a=1&b=2' or 'b=2&a=1'", result)
+	}
+}
