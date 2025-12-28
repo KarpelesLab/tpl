@@ -208,8 +208,19 @@ func TestValueCtxMatchValueType(t *testing.T) {
 	}{
 		{"to_bool_true", "1", true, true},
 		{"to_bool_false", "0", false, false},
+		{"to_bool_from_int", 42, true, true},
+		{"to_bool_from_zero", 0, false, false},
 		{"to_int", "42", int(0), int(42)},
+		{"to_int8", "42", int8(0), int8(42)},
+		{"to_int16", "42", int16(0), int16(42)},
+		{"to_int32", "42", int32(0), int32(42)},
 		{"to_int64", "42", int64(0), int64(42)},
+		{"to_uint8", "42", uint8(0), uint8(42)},
+		{"to_uint16", "42", uint16(0), uint16(42)},
+		{"to_uint32", "42", uint32(0), uint32(42)},
+		{"to_uint64", "42", uint64(0), uint64(42)},
+		{"to_uint", "42", uint(0), uint(42)},
+		{"to_float32", "3.14", float32(0), float32(3.14)},
 		{"to_float64", "3.14", float64(0), float64(3.14)},
 		{"to_string", 42, "", "42"},
 		{"to_bytes", "hello", []byte{}, []byte("hello")},
@@ -234,5 +245,53 @@ func TestValueCtxMatchValueType(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestValueCtxMatchValueTypeBoolFromNumber(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		value    any
+		expected bool
+	}{
+		{"from_int64_nonzero", int64(42), true},
+		{"from_int64_zero", int64(0), false},
+		{"from_uint64_nonzero", uint64(42), true},
+		{"from_uint64_zero", uint64(0), false},
+		{"from_float64_nonzero", float64(3.14), true},
+		{"from_float64_zero", float64(0), false},
+		{"from_nil", nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := tpl.NewValue(tt.value)
+			result, err := v.WithCtx(ctx).MatchValueType(true)
+			if err != nil {
+				t.Fatalf("MatchValueType failed: %v", err)
+			}
+			if result != tt.expected {
+				t.Errorf("got %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValueCtxMatchValueTypeBuffer(t *testing.T) {
+	ctx := context.Background()
+
+	v := tpl.NewValue("hello")
+	result, err := v.WithCtx(ctx).MatchValueType(&bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("MatchValueType failed: %v", err)
+	}
+	buf, ok := result.(*bytes.Buffer)
+	if !ok {
+		t.Fatalf("expected *bytes.Buffer, got %T", result)
+	}
+	if buf.String() != "hello" {
+		t.Errorf("got %q, want %q", buf.String(), "hello")
 	}
 }

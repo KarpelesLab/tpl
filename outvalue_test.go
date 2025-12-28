@@ -70,13 +70,13 @@ func TestOutValueMethods(t *testing.T) {
 func TestNewValueCtx(t *testing.T) {
 	ctx := context.Background()
 	val := tpl.NewValue("test")
-	
+
 	// Create ValueCtx with NewValueCtx
 	valueCtx := tpl.NewValueCtx(ctx, val)
 	if valueCtx == nil {
 		t.Errorf("NewValueCtx() returned nil")
 	}
-	
+
 	// Test Raw method
 	raw, err := valueCtx.Raw()
 	if err != nil {
@@ -84,5 +84,74 @@ func TestNewValueCtx(t *testing.T) {
 	}
 	if raw != "test" {
 		t.Errorf("Raw() = %v, want %v", raw, "test")
+	}
+}
+
+func TestAsFloatVariousTypes(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		value    any
+		expected float64
+	}{
+		{"float64", float64(3.14), 3.14},
+		{"int64", int64(42), 42.0},
+		{"uint64", uint64(42), 42.0},
+		{"bool_true", true, 1.0},
+		{"bool_false", false, 0.0},
+		{"string_number", "3.14", 3.14},
+		{"nil", nil, 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tpl.AsOutValue(ctx, tpl.NewValue(tt.value)).AsFloat(ctx)
+			if result != tt.expected {
+				t.Errorf("AsFloat() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAsIntVariousTypes(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name     string
+		value    any
+		expected int64
+	}{
+		{"int64", int64(42), 42},
+		{"uint64", uint64(42), 42},
+		{"float64", float64(3.7), 4},
+		{"bool_true", true, 1},
+		{"bool_false", false, 0},
+		{"string_number", "42", 42},
+		{"nil", nil, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tpl.AsOutValue(ctx, tpl.NewValue(tt.value)).AsInt(ctx)
+			if result != tt.expected {
+				t.Errorf("AsInt() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAsNumericEdgeCases(t *testing.T) {
+	ctx := context.Background()
+
+	// Test with a value that can't be converted to a number
+	nonNumVal := tpl.AsOutValue(ctx, tpl.NewValue(map[string]any{}))
+	floatResult := nonNumVal.AsFloat(ctx)
+	if floatResult != 0 {
+		t.Errorf("AsFloat() on non-numeric = %v, want 0", floatResult)
+	}
+	intResult := nonNumVal.AsInt(ctx)
+	if intResult != 0 {
+		t.Errorf("AsInt() on non-numeric = %v, want 0", intResult)
 	}
 }
