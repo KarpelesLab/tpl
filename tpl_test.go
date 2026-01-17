@@ -89,6 +89,19 @@ var tplTestVars = []struct {
 	{`dur3: {{@string("12345678")|duration()}}`, `dur3: 142:21:21:18`},
 	{`s: {{foreach {{@seq(1,9)|lines(3)}} as _A}}[{{foreach {{_A}} as _B}}={{_B}}{{/foreach}}]{{/foreach}}!`, `s: [=1=2=3][=4=5=6][=7=8=9]!`},
 	{`s: {{foreach {{@seq(1,9)|columns(3)}} as _A}}[{{foreach {{_A}} as _B}}={{_B}}{{/foreach}}]{{/foreach}}!`, `s: [=1=4=7][=2=5=8][=3=6=9]!`},
+
+	// direct expression tests (new syntax)
+	{`Direct string: {{"hello"}}`, `Direct string: hello`},
+	{`Direct string with filter: {{"hello"|uppercase()}}`, `Direct string with filter: HELLO`},
+	{`Direct number: {{42}}`, `Direct number: 42`},
+	{`Direct math: {{1+1}}`, `Direct math: 2`},
+	{`Direct math spaces: {{1 + 2}}`, `Direct math spaces: 3`},
+	{`Direct math precedence: {{1 + 2 * 3}}`, `Direct math precedence: 7`},
+	{`Direct float: {{3.14}}`, `Direct float: 3.14`},
+	{`Direct float math: {{1.5 + 2.5}}`, `Direct float math: 4`},
+	{`Direct paren: {{(1 + 2) * 3}}`, `Direct paren: 9`},
+	{`Direct paren alone: {{(42)}}`, `Direct paren alone: 42`},
+	{`Direct comparison: {{if 1 < 2}}yes{{/if}}`, `Direct comparison: yes`},
 }
 
 func TestTpl(t *testing.T) {

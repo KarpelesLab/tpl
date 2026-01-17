@@ -346,6 +346,32 @@ Loop:
 		case "{{":
 			// check for text
 			if f.data[0].ftyp != "text" {
+				// Check if it's a standalone quote (for direct string output)
+				// e.g., {{"hello"}} or {{"hello"|filter()}}
+				if len(f.data) == 1 && f.data[0].ftyp == `"` {
+					// Direct string output
+					n.typ = internalQuote
+					n.sub = make([]internalArray, 1)
+					n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data[0].data, false)
+					if err != nil {
+						return
+					}
+					n.filters, err = e.compileTpl_step2_recurse(ctx, f.linkextra, false)
+					break
+				}
+				// Check if it starts with parenthesis - treat as expression
+				// e.g., {{(1+2)}} or {{(1 + 2) * 3}}
+				if f.data[0].ftyp == "(" {
+					// Parse as expression
+					n.typ = internalSub
+					n.sub = make([]internalArray, 1)
+					n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data, true) // true = isExpression
+					if err != nil {
+						return
+					}
+					n.filters, err = e.compileTpl_step2_recurse(ctx, f.linkextra, false)
+					break
+				}
 				// consider it a link
 				n.typ = internalLink
 				n.sub = make([]internalArray, 1)
@@ -623,6 +649,21 @@ Loop:
 				break
 			}
 			if n.typ == internalInvalid {
+				// Check if the text looks like a numeric expression (starts with digit or decimal point)
+				// e.g., {{1+1}}, {{3.14}}, {{1 + 2 * 3}}
+				trimmedTxt := strings.TrimSpace(txt)
+				if len(trimmedTxt) > 0 && (isDigit(trimmedTxt[0]) || (trimmedTxt[0] == '.' && len(trimmedTxt) > 1 && isDigit(trimmedTxt[1]))) {
+					// This looks like a numeric expression - parse as expression and output
+					n.typ = internalSub
+					n.sub = make([]internalArray, 1)
+					n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data, true) // true = isExpression
+					if err != nil {
+						return
+					}
+					n.filters, err = e.compileTpl_step2_recurse(ctx, f.linkextra, false)
+					break
+				}
+
 				// consider it a link, but start by making text lowercase
 				pos := strings.IndexByte(txt, '/')
 				if pos > 0 {
@@ -754,4 +795,9 @@ Loop:
 
 	}
 	return
+}
+
+// isDigit returns true if the byte is a digit (0-9)
+func isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
 }
