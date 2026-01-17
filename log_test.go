@@ -46,7 +46,7 @@ func TestLogWarn(t *testing.T) {
 
 func TestLogError(t *testing.T) {
 	err := errors.New("test error")
-	
+
 	// Test with nil context (use context.TODO as recommended)
 	tpl.LogError(context.TODO(), err, "error occurred", "arg1", 123)
 

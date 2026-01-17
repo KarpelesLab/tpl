@@ -598,7 +598,6 @@ func TestMathWithMixedIntTypes(t *testing.T) {
 	}
 }
 
-
 func TestRandFunction(t *testing.T) {
 	engine := tpl.New()
 	engine.Raw.TemplateData["main"] = `{{@rand(1, 100)}}`

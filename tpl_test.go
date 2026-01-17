@@ -102,6 +102,52 @@ var tplTestVars = []struct {
 	{`Direct paren: {{(1 + 2) * 3}}`, `Direct paren: 9`},
 	{`Direct paren alone: {{(42)}}`, `Direct paren alone: 42`},
 	{`Direct comparison: {{if 1 < 2}}yes{{/if}}`, `Direct comparison: yes`},
+
+	// bracket index tests
+	{`Bracket array: {{_TEST_ARRAY[0]}}`, `Bracket array: hello`},
+	{`Bracket array 1: {{_TEST_ARRAY[1]}}`, `Bracket array 1: world`},
+	{`Bracket object: {{_TEST_IDX["Foo"]}}`, `Bracket object: bar`},
+	{`Bracket with filter: {{_TEST_ARRAY[0]|uppercase()}}`, `Bracket with filter: HELLO`},
+	{`Bracket chained: {{_TEST_CMPLX[0]["a"]}}`, `Bracket chained: foo`},
+	{`Bracket mixed slash: {{_TEST_CMPLX[0]/a}}`, `Bracket mixed slash: foo`},
+	{`Bracket var index: {{set _I=0}}{{_TEST_ARRAY[{{_I}}]}}{{/set}}`, `Bracket var index: hello`},
+
+	// bracket index edge cases
+	{`Bracket computed index: {{_TEST_ARRAY[0+1]}}`, `Bracket computed index: world`},
+	{`Bracket string var key: {{set _K="Foo"}}{{_TEST_IDX[{{_K}}]}}{{/set}}`, `Bracket string var key: bar`},
+	{`Bracket nested var: {{set _I=0}}{{_TEST_CMPLX[{{_I}}]["a"]}}{{/set}}`, `Bracket nested var: foo`},
+	{`Bracket multi chained: {{_TEST_CMPLX[1]["a"]}}`, `Bracket multi chained: bar`},
+	{`Bracket with parens: {{_TEST_ARRAY[(0)]}}`, `Bracket with parens: hello`},
+	{`Bracket expr in parens: {{_TEST_ARRAY[(1-1)]}}`, `Bracket expr in parens: hello`},
+
+	// set command edge cases - inline numeric values
+	{`Set inline int: {{set _A=42}}{{_A}}{{/set}}`, `Set inline int: 42`},
+	{`Set inline negative: {{set _X=-5}}{{_X}}{{/set}}`, `Set inline negative: -5`},
+	{`Set inline float: {{set _F=3.14}}{{_F}}{{/set}}`, `Set inline float: 3.14`},
+	{`Set inline then bracket: {{set _I=1}}{{_TEST_ARRAY[{{_I}}]}}{{/set}}`, `Set inline then bracket: world`},
+	{`Set computed value: {{set _X=(2+3)}}{{_X}}{{/set}}`, `Set computed value: 5`},
+	{`Set var ref: {{set _A=1}}{{set _B={{_A}}}}{{_B}}{{/set}}{{/set}}`, `Set var ref: 1`},
+	{`Set override: {{set _X=1}}{{set _X=2}}{{_X}}{{/set}}{{/set}}`, `Set override: 2`},
+
+	// combined bracket and set edge cases
+	{`Combined computed bracket: {{set _I=(1+0)}}{{_TEST_ARRAY[{{_I}}]}}{{/set}}`, `Combined computed bracket: world`},
+	{`Bracket after set expr: {{set _X={{_TEST_ARRAY[0]}}}}{{_X}}{{/set}}`, `Bracket after set expr: hello`},
+
+	// direct expression edge cases
+	{`Direct negative: {{-5}}`, `Direct negative: -5`},
+	{`Direct negative expr: {{-5 + 3}}`, `Direct negative expr: -2`},
+	{`Direct negative mult: {{-2 * 3}}`, `Direct negative mult: -6`},
+	{`Direct double negative: {{--5}}`, `Direct double negative: 5`},
+	{`Direct unary in paren: {{(-3) * 2}}`, `Direct unary in paren: -6`},
+	{`Direct add negative: {{1 + -2}}`, `Direct add negative: -1`},
+	{`Direct sub negative: {{5 - -3}}`, `Direct sub negative: 8`},
+	{`Direct triple negative: {{---5}}`, `Direct triple negative: -5`},
+
+	// foreach with bracket access
+	{`Foreach bracket: {{foreach {{@seq(0,1)}} as _I}}{{_TEST_ARRAY[{{_I}}]}}.{{/foreach}}`, `Foreach bracket: hello.world.`},
+
+	// nested structures
+	{`Nested set bracket: {{set _I=0}}{{set _J={{_TEST_ARRAY[{{_I}}]}}}}{{_J}}{{/set}}{{/set}}`, `Nested set bracket: hello`},
 }
 
 func TestTpl(t *testing.T) {
@@ -136,46 +182,46 @@ func TestTpl(t *testing.T) {
 
 func TestPageMethods(t *testing.T) {
 	e := tpl.New()
-	
+
 	// Test HasTpl
 	if e.HasTpl("nonexistent") {
 		t.Errorf("HasTpl returned true for nonexistent template")
 	}
-	
+
 	// Add required main template for compilation to succeed
 	e.Raw.TemplateData["main"] = "Main template"
 	e.Raw.TemplateData["existing"] = "template content"
 	if err := e.Compile(context.Background()); err != nil {
 		t.Fatalf("Failed to compile template: %v", err)
 	}
-	
+
 	if !e.HasTpl("existing") {
 		t.Errorf("HasTpl returned false for existing template")
 	}
-	
+
 	// Test GetMime
 	// First, clear any existing charset
 	delete(e.Raw.PageProperties, "Charset")
-	
+
 	// Test GetMime with only Content-Type set
 	e.Raw.PageProperties["Content-Type"] = "application/json"
 	expectedMime := "application/json"
 	if mime := e.GetMime(); !strings.HasPrefix(mime, expectedMime) {
 		t.Errorf("GetMime() = %v, expected to start with %v", mime, expectedMime)
 	}
-	
+
 	// Test GetMime with Charset set
 	e.Raw.PageProperties["Charset"] = "utf-8"
 	expectedMimeWithCharset := "application/json; charset=utf-8"
 	if mime := e.GetMime(); mime != expectedMimeWithCharset {
 		t.Errorf("GetMime() = %v, want %v", mime, expectedMimeWithCharset)
 	}
-	
+
 	// Test GetProperty
 	if prop := e.GetProperty("Charset"); prop != "utf-8" {
 		t.Errorf("GetProperty(\"Charset\") = %v, want %v", prop, "utf-8")
 	}
-	
+
 	if prop := e.GetProperty("NonExistent"); prop != "" {
 		t.Errorf("GetProperty(\"NonExistent\") = %v, want %v", prop, "")
 	}
@@ -183,24 +229,24 @@ func TestPageMethods(t *testing.T) {
 
 func TestValueCtxMethods(t *testing.T) {
 	ctx := context.Background()
-	
+
 	// Test ToBool
 	v := tpl.NewValue(true).WithCtx(ctx)
 	if !v.ToBool() {
 		t.Errorf("ValueCtx.ToBool() for true value = %v, want %v", v.ToBool(), true)
 	}
-	
+
 	// Test IsString
 	strVal := tpl.NewValue("test string").WithCtx(ctx)
 	if !strVal.IsString() {
 		t.Errorf("ValueCtx.IsString() for string value = %v, want %v", strVal.IsString(), true)
 	}
-	
+
 	numVal := tpl.NewValue(123).WithCtx(ctx)
 	if numVal.IsString() {
 		t.Errorf("ValueCtx.IsString() for numeric value = %v, want %v", numVal.IsString(), false)
 	}
-	
+
 	// Test MarshalJSON
 	jsonData, err := strVal.MarshalJSON()
 	if err != nil {
@@ -209,7 +255,7 @@ func TestValueCtxMethods(t *testing.T) {
 	if string(jsonData) != "\"test string\"" {
 		t.Errorf("ValueCtx.MarshalJSON() = %v, want %v", string(jsonData), "\"test string\"")
 	}
-	
+
 	// Test MatchValueType with a valid language string
 	langVal := tpl.NewValue("en-US").WithCtx(ctx)
 	matchedVal, err := langVal.MatchValueType(language.English)

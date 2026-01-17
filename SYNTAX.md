@@ -28,13 +28,28 @@ This document describes the syntax and capabilities of the TPL-GO template engin
 
 ### Array and Object Access
 
-Access array elements and object properties using the forward slash (`/`) notation:
+Access array elements and object properties using forward slash (`/`) or bracket (`[]`) notation:
 
+**Slash notation:**
 ```
 {{_ARRAY/0}}              Access first element of array (0-indexed)
 {{_ARRAY/1}}              Access second element
 {{_OBJECT/property}}      Access object property by name
 {{_DATA/users/0/name}}    Chain multiple levels of access
+```
+
+**Bracket notation:**
+```
+{{_ARRAY[0]}}             Access first element of array
+{{_ARRAY[1]}}             Access second element
+{{_OBJECT["property"]}}   Access object property by name (quotes required for strings)
+{{_DATA[0]["name"]}}      Chain multiple bracket accesses
+```
+
+**Mixed notation:**
+```
+{{_USERS[0]/name}}        Bracket then slash
+{{_DATA/users[0]}}        Slash then bracket
 ```
 
 **Supported types for indexing:**
@@ -46,13 +61,13 @@ Access array elements and object properties using the forward slash (`/`) notati
 **Examples:**
 ```
 {{set _USER={"name": "John", "address": {"city": "Paris"}}}}
-  Name: {{_USER/name}}
-  City: {{_USER/address/city}}
+  Name: {{_USER/name}} or {{_USER["name"]}}
+  City: {{_USER/address/city}} or {{_USER["address"]["city"]}}
 {{/set}}
 
 {{set _ITEMS=("apple", "banana", "cherry")}}
-  First: {{_ITEMS/0}}
-  Last: {{_ITEMS/2}}
+  First: {{_ITEMS/0}} or {{_ITEMS[0]}}
+  Last: {{_ITEMS/2}} or {{_ITEMS[2]}}
 {{/set}}
 ```
 

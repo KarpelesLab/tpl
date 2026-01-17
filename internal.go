@@ -26,6 +26,7 @@ const (
 	internalSub      // Sub[0] - used in expressions
 	internalList     // Sub[*] (for example when values are separated by commas), parsed as Values
 	internalSet      // Sub[0] + filters (to set variables)
+	internalIndex    // Sub[0][Sub[1]] - bracket index access, Sub[0]=base, Sub[1]=index expression
 )
 
 // internalNode contains a sub-element in a given page

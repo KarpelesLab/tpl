@@ -287,7 +287,6 @@ func TestForeachWithMapAny(t *testing.T) {
 		t.Fatalf("ParseAndReturn failed: %v", err)
 	}
 
-
 	if result != "x=1;" {
 		t.Errorf("got %q, want %q", result, "x=1;")
 	}

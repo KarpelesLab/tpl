@@ -109,7 +109,7 @@ func (tpl internalArray) run(ctx context.Context, out *interfaceValue) (err erro
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	
+
 	// Handle empty array or single node cases
 	if len(tpl) == 0 {
 		return nil
@@ -125,7 +125,7 @@ func (tpl internalArray) run(ctx context.Context, out *interfaceValue) (err erro
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			
+
 			if err = n.run(ctx, out); err != nil {
 				return err
 			}
@@ -459,6 +459,47 @@ func (n *internalNode) run(ctx context.Context, out *interfaceValue) error {
 		}
 	case internalValue:
 		target.WriteValue(ctx, n.value)
+	case internalIndex:
+		// Bracket index access: sub[0] is the base, sub[1] is the index expression
+		// str may contain additional path like "/a" to resolve after indexing
+		// First evaluate the base
+		baseVal := &interfaceValue{}
+		if err := n.sub[0].run(ctx, baseVal); err != nil {
+			return err
+		}
+		base, err := baseVal.ReadValue(ctx)
+		if err != nil {
+			return n.subError(err, "failed to read base value: %s", err)
+		}
+
+		// Then evaluate the index expression
+		indexVal := &interfaceValue{}
+		if err := n.sub[1].run(ctx, indexVal); err != nil {
+			return err
+		}
+		indexKey := indexVal.WithCtx(ctx).String()
+
+		// Resolve the indexed value
+		result, err := ResolveValueIndex(ctx, base, indexKey)
+		if err != nil {
+			return n.subError(err, "failed to access index [%s]: %s", indexKey, err)
+		}
+
+		// If there's additional path in str (like "/a"), resolve it
+		if n.str != "" {
+			pathParts := strings.Split(n.str, "/")
+			for _, part := range pathParts {
+				if part == "" {
+					continue
+				}
+				result, err = ResolveValueIndex(ctx, result, part)
+				if err != nil {
+					return n.subError(err, "failed to access path [%s]: %s", part, err)
+				}
+			}
+		}
+
+		target.WriteValue(ctx, result)
 	default:
 		return n.error("unable to process node of type %s", n.typ.String())
 		//n.Dump(out, 1)

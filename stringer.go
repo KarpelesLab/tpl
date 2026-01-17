@@ -4,13 +4,37 @@ package tpl
 
 import "strconv"
 
-const _internalType_name = "internalInvalidinternalTextinternalLinkinternalQuoteinternalValueinternalIfinternalTryinternalForeachinternalJsinternalFuncinternalFilterinternalVarinternalOperatorinternalSubinternalListinternalSet"
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[internalInvalid-0]
+	_ = x[internalText-1]
+	_ = x[internalLink-2]
+	_ = x[internalQuote-3]
+	_ = x[internalValue-4]
+	_ = x[internalIf-5]
+	_ = x[internalTry-6]
+	_ = x[internalForeach-7]
+	_ = x[internalJs-8]
+	_ = x[internalFunc-9]
+	_ = x[internalFilter-10]
+	_ = x[internalVar-11]
+	_ = x[internalOperator-12]
+	_ = x[internalSub-13]
+	_ = x[internalList-14]
+	_ = x[internalSet-15]
+	_ = x[internalIndex-16]
+}
 
-var _internalType_index = [...]uint8{0, 15, 27, 39, 52, 65, 75, 86, 101, 111, 123, 137, 148, 164, 175, 187, 198}
+const _internalType_name = "internalInvalidinternalTextinternalLinkinternalQuoteinternalValueinternalIfinternalTryinternalForeachinternalJsinternalFuncinternalFilterinternalVarinternalOperatorinternalSubinternalListinternalSetinternalIndex"
+
+var _internalType_index = [...]uint8{0, 15, 27, 39, 52, 65, 75, 86, 101, 111, 123, 137, 148, 164, 175, 187, 198, 211}
 
 func (i internalType) String() string {
-	if i < 0 || i >= internalType(len(_internalType_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_internalType_index)-1 {
 		return "internalType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _internalType_name[_internalType_index[i]:_internalType_index[i+1]]
+	return _internalType_name[_internalType_index[idx]:_internalType_index[idx+1]]
 }

@@ -31,7 +31,7 @@ func TestErrorString(t *testing.T) {
 func TestErrorUnwrap(t *testing.T) {
 	// Create a parent error
 	parentErr := errors.New("parent error")
-	
+
 	// Create a test error with a parent
 	err := &tpl.Error{
 		Message:  "test error",
@@ -61,7 +61,7 @@ func TestErrorIs(t *testing.T) {
 		Line:     10,
 		Char:     20,
 	}
-	
+
 	err2 := &tpl.Error{
 		Message:  "test error",
 		Template: "test.tpl",

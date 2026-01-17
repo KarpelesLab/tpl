@@ -339,7 +339,6 @@ func TestFilterReverseArray(t *testing.T) {
 	}
 }
 
-
 func TestFilterSizeNegative(t *testing.T) {
 	engine := tpl.New()
 	engine.Raw.TemplateData["main"] = `{{_val|size()}}`
@@ -1483,7 +1482,6 @@ func TestStripBbCodeFilter(t *testing.T) {
 		})
 	}
 }
-
 
 func TestToStringFilter(t *testing.T) {
 	tests := []struct {

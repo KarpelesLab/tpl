@@ -151,7 +151,7 @@ func fncSeq(ctx context.Context, params Values, out WritableValue) error {
 		return nil
 	}
 
-	count := (end - start) / step + 1
+	count := (end-start)/step + 1
 	res := make(Values, count)
 
 	idx := 0

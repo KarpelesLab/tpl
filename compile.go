@@ -196,6 +196,12 @@ func (e *Page) compileTpl_step1(rctx context.Context, tpl, data string) error {
 		case ctx.c == ')' && ctx.stack[ctx.level].ftyp == "(": // closing parenthesis
 			ctx.flush()
 			ctx.level--
+		case ctx.c == '[' && ctx.level > 0 && ctx.stack[ctx.level].ftyp != `"`: // bracket index in {{}}
+			ctx.flush()
+			ctx.newFragment("[")
+		case ctx.c == ']' && ctx.stack[ctx.level].ftyp == "[": // closing bracket
+			ctx.flush()
+			ctx.level--
 		case ctx.c == '|' && ctx.cNext != '|' && ctx.cLast != '|' && ctx.level > 0 && ctx.stack[ctx.level].ftyp != `"`: // argument separator (filters/etc)
 			ctx.flush()
 			if ctx.stack[ctx.level].ftyp == "|" {
@@ -319,6 +325,11 @@ Loop:
 			n.typ = internalSub
 			n.sub = make([]internalArray, 1)
 			n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data, true)
+		case "[":
+			// Bracket index - the content is evaluated and used as index key
+			n.typ = internalIndex
+			n.sub = make([]internalArray, 1)
+			n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data, true) // evaluate as expression
 		case "|":
 			if len(f.data) != 2 {
 				// should be 2 (string func name, then parenthesis args)
@@ -486,37 +497,75 @@ Loop:
 					f.data[0].text = f.data[0].text[4:]
 				}
 
-				// let's just parse all we now have in f.data, should be one text node ( _key=) and a value (quoted, link, etc)
-				for len(f.data) > 1 {
+				// Parse variable assignments from f.data
+				// Handles both: {{set _I="value"}} (multi-fragment) and {{set _I=0}} (single-fragment)
+				for len(f.data) > 0 {
 					if f.data[0].ftyp != "text" {
 						err = f.data[0].error("invalid set instruction")
 						return
 					}
 
 					tmp := strings.TrimSpace(f.data[0].text)
-					if !strings.HasSuffix(tmp, "=") {
-						err = f.data[0].error("invalid set instruction")
-						return
+					if tmp == "" {
+						// Skip empty text fragments
+						f.data = f.data[1:]
+						continue
 					}
-					tmp = strings.ToLower(strings.TrimSpace(strings.TrimSuffix(tmp, "=")))
 
-					if tmp[0] != '_' {
-						err = f.data[0].error("invalid set instruction")
+					// Check if this text contains an = sign (indicating _VAR=value pattern)
+					eqPos := strings.Index(tmp, "=")
+					if eqPos == -1 {
+						err = f.data[0].error("invalid set instruction: missing =")
 						return
 					}
+
+					varName := strings.ToLower(strings.TrimSpace(tmp[:eqPos]))
+					if len(varName) == 0 || varName[0] != '_' {
+						err = f.data[0].error("invalid set instruction: variable must start with _")
+						return
+					}
+
+					valueStr := strings.TrimSpace(tmp[eqPos+1:])
 
 					nVar := f.data[0].newNode()
 					nVar.typ = internalVar
-					nVar.str = tmp
+					nVar.str = varName
 					nVar.sub = make([]internalArray, 1)
-					nVar.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data[1:2], true)
-					if err != nil {
+
+					// Check if the value part is empty (meaning the value is in the next fragment)
+					if valueStr == "" && len(f.data) > 1 {
+						// Value is in next fragment (e.g., {{set _I="value"}})
+						nVar.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data[1:2], true)
+						if err != nil {
+							return
+						}
+						n.filters = append(n.filters, nVar)
+						f.data = f.data[2:]
+					} else if valueStr != "" {
+						// Value is inline in the text (e.g., {{set _I=0}})
+						// Create a synthetic fragment for the value and compile it
+						valFrag := f.data[0].newNode()
+						valFrag.typ = internalText
+						valFrag.str = valueStr
+
+						// Try to parse as expression (number, variable reference, etc.)
+						synthFrag := &fragment{
+							ftyp: "text",
+							text: valueStr,
+							ctx:  f.data[0].ctx,
+							line: f.data[0].line,
+							char: f.data[0].char,
+						}
+						nVar.sub[0], err = e.compileTpl_step2_recurse(ctx, fragments{synthFrag}, true)
+						if err != nil {
+							return
+						}
+						n.filters = append(n.filters, nVar)
+						f.data = f.data[1:]
+					} else {
+						err = f.data[0].error("invalid set instruction: missing value")
 						return
 					}
-
-					n.filters = append(n.filters, nVar)
-
-					f.data = f.data[2:]
 				}
 
 				n.sub[0] = internalArray{}
@@ -649,10 +698,12 @@ Loop:
 				break
 			}
 			if n.typ == internalInvalid {
-				// Check if the text looks like a numeric expression (starts with digit or decimal point)
-				// e.g., {{1+1}}, {{3.14}}, {{1 + 2 * 3}}
+				// Check if the text looks like a numeric expression (starts with digit, decimal point, or minus sign)
+				// e.g., {{1+1}}, {{3.14}}, {{1 + 2 * 3}}, {{-5}}, {{-3.14}}, {{--5}}
 				trimmedTxt := strings.TrimSpace(txt)
-				if len(trimmedTxt) > 0 && (isDigit(trimmedTxt[0]) || (trimmedTxt[0] == '.' && len(trimmedTxt) > 1 && isDigit(trimmedTxt[1]))) {
+				if len(trimmedTxt) > 0 && (isDigit(trimmedTxt[0]) ||
+					(trimmedTxt[0] == '.' && len(trimmedTxt) > 1 && isDigit(trimmedTxt[1])) ||
+					(trimmedTxt[0] == '-' && len(trimmedTxt) > 1 && (isDigit(trimmedTxt[1]) || trimmedTxt[1] == '.' || trimmedTxt[1] == '-'))) {
 					// This looks like a numeric expression - parse as expression and output
 					n.typ = internalSub
 					n.sub = make([]internalArray, 1)
@@ -671,12 +722,69 @@ Loop:
 				} else {
 					f.data[0].text = strings.ToLower(txt)
 				}
-				n.typ = internalLink
-				n.sub = make([]internalArray, 1)
-				n.sub[0], err = e.compileTpl_step2_recurse(ctx, f.data, false)
-				if err != nil {
-					return
+
+				// Process f.data in order, handling brackets inline
+				// Each bracket creates an internalIndex wrapping the current expression
+				// Text after a bracket becomes additional path components
+				var currentData fragments
+				for _, fd := range f.data {
+					if fd.ftyp == "[" {
+						// First, create the current node from accumulated data
+						if len(currentData) > 0 {
+							n.typ = internalLink
+							n.sub = make([]internalArray, 1)
+							n.sub[0], err = e.compileTpl_step2_recurse(ctx, currentData, false)
+							if err != nil {
+								return
+							}
+							currentData = nil
+						}
+
+						// Wrap current node with internalIndex
+						indexNode := fd.newNode()
+						indexNode.typ = internalIndex
+						indexNode.sub = make([]internalArray, 2)
+						indexNode.sub[0] = internalArray{n}                                    // base is the current node
+						indexNode.sub[1], err = e.compileTpl_step2_recurse(ctx, fd.data, true) // index expression
+						if err != nil {
+							return
+						}
+						n = indexNode
+					} else {
+						// Accumulate text/other fragments
+						currentData = append(currentData, fd)
+					}
 				}
+
+				// Process any remaining data after the last bracket
+				if len(currentData) > 0 {
+					if n.typ == internalIndex {
+						// We have path components after a bracket - need to apply them to the indexed result
+						// Convert remaining path to string and create a path-resolving wrapper
+						pathNode := f.newNode()
+						pathNode.typ = internalLink
+						pathNode.sub = make([]internalArray, 1)
+						// Prepend a placeholder that will be replaced by the indexed value
+						pathNode.sub[0], err = e.compileTpl_step2_recurse(ctx, currentData, false)
+						if err != nil {
+							return
+						}
+						// Wrap: the internalIndex result needs to have the path applied
+						// We use internalIndex with the path as a "continuation"
+						// Actually, let's handle this differently - store path in str field
+						// For now, just append the path to be resolved at runtime
+						n.str = currentData[0].text // store the path like "/a" for runtime resolution
+					} else {
+						// No brackets yet - just create a normal link
+						n.typ = internalLink
+						n.sub = make([]internalArray, 1)
+						n.sub[0], err = e.compileTpl_step2_recurse(ctx, currentData, false)
+						if err != nil {
+							return
+						}
+					}
+				}
+
 				n.filters, err = e.compileTpl_step2_recurse(ctx, f.linkextra, false)
 			}
 		}
@@ -728,6 +836,56 @@ Loop:
 				}
 			}
 		}
+
+		// Special handling for consecutive unary operators at the start (e.g., --5, !!x)
+		// Process the rightmost one first (closest to operand)
+		if op_pos == 0 && len(res) > 2 {
+			// Check how many consecutive unprocessed operators we have at the start
+			lastUnaryPos := 0
+			for i := 0; i < len(res)-1; i++ {
+				if res[i].typ == internalOperator && len(res[i].sub) == 0 {
+					// Check if this could be a unary operator (!, ~, or - followed by value/another unary)
+					opStr := res[i].str
+					if opStr == "!" || opStr == "~" || opStr == "-" {
+						lastUnaryPos = i
+					} else {
+						break
+					}
+				} else {
+					break
+				}
+			}
+			// If we have multiple consecutive unary operators, start with the rightmost
+			if lastUnaryPos > 0 {
+				op_pos = lastUnaryPos
+			}
+		}
+
+		// Handle case where the selected operator is followed by a unary operator (e.g., 5 - -3)
+		// We need to process the unary operator first
+		if op_pos > 0 && op_pos+1 < len(res) {
+			next := res[op_pos+1]
+			if next.typ == internalOperator && len(next.sub) == 0 {
+				nextStr := next.str
+				if nextStr == "!" || nextStr == "~" || nextStr == "-" {
+					// Find the last consecutive unary operator starting from op_pos+1
+					lastUnaryPos := op_pos + 1
+					for i := op_pos + 1; i < len(res)-1; i++ {
+						if res[i].typ == internalOperator && len(res[i].sub) == 0 {
+							opStr := res[i].str
+							if opStr == "!" || opStr == "~" || opStr == "-" {
+								lastUnaryPos = i
+							} else {
+								break
+							}
+						} else {
+							break
+						}
+					}
+					op_pos = lastUnaryPos
+				}
+			}
+		}
 		if !has_op {
 			break
 		}
@@ -742,8 +900,16 @@ Loop:
 
 		if op_pos == 0 {
 			if n.str == "!" || n.str == "~" {
-				// special case!
+				// special case for unary operators
 				n.sub = []internalArray{internalArray{next_n}}
+				res = res[1:]
+				res[0] = n
+				continue
+			}
+			if n.str == "-" {
+				// unary minus: convert to (0 - x)
+				zeroNode := n.e.makeValueNode(n.tpl, n.line, n.char, int64(0))
+				n.sub = []internalArray{internalArray{zeroNode}, internalArray{next_n}}
 				res = res[1:]
 				res[0] = n
 				continue
@@ -752,7 +918,7 @@ Loop:
 		}
 
 		if n.str == "!" || n.str == "~" {
-			// special case!
+			// special case for unary operators at non-zero position
 			n.sub = []internalArray{internalArray{next_n}}
 			copy(res[op_pos:], res[op_pos+1:])
 			res[len(res)-1] = nil
@@ -762,6 +928,19 @@ Loop:
 		}
 
 		prev_n := res[op_pos-1]
+
+		// Handle unary minus at non-zero position (when preceded by another operator)
+		// e.g., in "--5", the second "-" is unary
+		if n.str == "-" && prev_n.typ == internalOperator && len(prev_n.sub) == 0 {
+			// unary minus: convert to (0 - x)
+			zeroNode := n.e.makeValueNode(n.tpl, n.line, n.char, int64(0))
+			n.sub = []internalArray{internalArray{zeroNode}, internalArray{next_n}}
+			copy(res[op_pos:], res[op_pos+1:])
+			res[len(res)-1] = nil
+			res[op_pos] = n
+			res = res[:len(res)-1]
+			continue
+		}
 
 		if n.str == "," {
 			if last_comma != nil {
@@ -800,4 +979,17 @@ Loop:
 // isDigit returns true if the byte is a digit (0-9)
 func isDigit(c byte) bool {
 	return c >= '0' && c <= '9'
+}
+
+// makeValueNode creates an internalNode with a pre-computed value
+func (e *Page) makeValueNode(tpl string, line, char int, val any) *internalNode {
+	n := &internalNode{
+		typ:   internalValue,
+		value: NewValue(val),
+		line:  line,
+		char:  char,
+		tpl:   tpl,
+		e:     e,
+	}
+	return n
 }
